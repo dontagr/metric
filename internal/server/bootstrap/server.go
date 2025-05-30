@@ -8,5 +8,5 @@ import (
 
 var Server = fx.Options(
 	fx.Provide(httpserver.NewServer),
-	fx.Invoke(func(*httpserver.HttpServer) {}),
+	fx.Invoke(func(*httpserver.HTTPServer) {}),
 )

@@ -11,11 +11,11 @@ import (
 	"github.com/dontagr/metric/internal/server/config"
 )
 
-type HttpServer struct {
+type HTTPServer struct {
 	Master *http.Server
 }
 
-func NewServer(cfg *config.Config, mux *http.ServeMux, lc fx.Lifecycle, shutdowner fx.Shutdowner) *HttpServer {
+func NewServer(cfg *config.Config, mux *http.ServeMux, lc fx.Lifecycle, shutdowner fx.Shutdowner) *HTTPServer {
 	mainServer := &http.Server{Addr: cfg.HTTPServer.BindAddress, Handler: mux}
 
 	lc.Append(fx.Hook{
@@ -39,7 +39,7 @@ func NewServer(cfg *config.Config, mux *http.ServeMux, lc fx.Lifecycle, shutdown
 		},
 	})
 
-	return &HttpServer{
+	return &HTTPServer{
 		Master: mainServer,
 	}
 }
