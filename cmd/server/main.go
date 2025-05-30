@@ -9,6 +9,7 @@ import (
 func main() {
 	fx.New(CreateApp()).Run()
 }
+
 func CreateApp() fx.Option {
 	return fx.Options(
 		bootstrap.Config,

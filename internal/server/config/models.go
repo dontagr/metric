@@ -1,6 +1,6 @@
 package config
 
-var configFileNames = []string{"config.json"}
+var configFileNames = []string{"server.json"}
 
 var configPaths = []string{"../../configs", "./configs"}
 
