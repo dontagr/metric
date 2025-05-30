@@ -43,7 +43,7 @@ func (s *Sender) Handle() {
 			val := reflect.ValueOf(*s.stats).FieldByName(index)
 
 			resp, err := http.Post(
-				fmt.Sprintf("http://%s/update/%s/%s/%v", s.cfg.HttpBindAddress, mType, index, val),
+				fmt.Sprintf("http://%s/update/%s/%s/%v", s.cfg.HTTPBindAddress, mType, index, val),
 				"text/plain",
 				nil,
 			)

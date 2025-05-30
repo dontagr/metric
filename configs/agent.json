@@ -1,5 +1,5 @@
 {
   "PollInterval": 2,
   "ReportInterval": 10,
-  "HttpBindAddress": ":8080"
+  "HTTPBindAddress": ":8080"
 }

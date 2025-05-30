@@ -7,5 +7,5 @@ var configPaths = []string{"../../configs", "./configs"}
 type Config struct {
 	PollInterval    int    `json:"PollInterval"`
 	ReportInterval  int    `json:"ReportInterval"`
-	HttpBindAddress string `json:"HttpBindAddress"`
+	HTTPBindAddress string `json:"HTTPBindAddress"`
 }
