@@ -1,0 +1,17 @@
+package service
+
+import (
+	"github.com/dontagr/metric/models"
+)
+
+type (
+	Store interface {
+		LoadMetric(id string, mType string) *models.Metrics
+		SaveMetric(metrics *models.Metrics)
+	}
+	Metric interface {
+		GetName() string
+		ConvertToMetrics(id string, value string) (*models.Metrics, error)
+		Process(oldValue *models.Metrics, newValue *models.Metrics) error
+	}
+)

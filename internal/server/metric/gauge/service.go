@@ -1,0 +1,42 @@
+package gauge
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/dontagr/metric/internal/server/service"
+	"github.com/dontagr/metric/models"
+)
+
+type Metric struct {
+	name string
+}
+
+func RegisterMetric(mf *service.MetricFactory) {
+	mf.SetMetric(&Metric{name: models.Gauge})
+}
+
+func (m *Metric) GetName() string {
+	return m.name
+}
+
+func (m *Metric) ConvertToMetrics(id string, value string) (*models.Metrics, error) {
+	if id == "" {
+		return nil, fmt.Errorf("id %v is required", id)
+	}
+
+	val, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return nil, fmt.Errorf("%v is not a valid int64", value)
+	}
+
+	return &models.Metrics{
+		ID:    id,
+		MType: models.Gauge,
+		Value: &val,
+	}, nil
+}
+
+func (m *Metric) Process(_ *models.Metrics, _ *models.Metrics) error {
+	return nil
+}

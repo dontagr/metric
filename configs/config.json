@@ -1,0 +1,5 @@
+{
+  "HttpServing": {
+    "BindAddress": ":8080"
+  }
+}
