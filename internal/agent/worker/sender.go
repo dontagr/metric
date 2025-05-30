@@ -3,6 +3,8 @@ package worker
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"reflect"
 	"time"
 
 	"go.uber.org/fx"
@@ -35,9 +37,24 @@ func NewSender(cfg *config.Config, stats *service.Stats, lc fx.Lifecycle) *Sende
 
 func (s *Sender) Handle() {
 	for {
-		fmt.Println("sender run")
-		fmt.Println(s.stats.PollCount)
-
 		time.Sleep(time.Duration(s.cfg.ReportInterval) * time.Second)
+		fmt.Printf("sender run with %v\n", s.stats.PollCount)
+		for index, mType := range EnableStats {
+			val := reflect.ValueOf(*s.stats).FieldByName(index)
+
+			resp, err := http.Post(
+				fmt.Sprintf("http://%s/update/%s/%s/%v", s.cfg.HttpBindAddress, mType, index, val),
+				"text/plain",
+				nil,
+			)
+			if err != nil {
+				fmt.Printf("Error sending data for %s: %v\n", mType, err)
+				continue
+			}
+			err = resp.Body.Close()
+			if err != nil {
+				fmt.Printf("Error sending data for %s: %v\n", mType, err)
+			}
+		}
 	}
 }
