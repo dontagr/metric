@@ -16,7 +16,7 @@ type HttpServer struct {
 }
 
 func NewServer(cfg *config.Config, mux *http.ServeMux, lc fx.Lifecycle, shutdowner fx.Shutdowner) *HttpServer {
-	mainServer := &http.Server{Addr: cfg.HttpServing.BindAddress, Handler: mux}
+	mainServer := &http.Server{Addr: cfg.HTTPServer.BindAddress, Handler: mux}
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {

@@ -5,9 +5,9 @@ var configFileNames = []string{"config.json"}
 var configPaths = []string{"../../configs", "./configs"}
 
 type Config struct {
-	HttpServing HttpServing `json:"HttpServing"`
+	HTTPServer HTTPServer `json:"HttpServing"`
 }
 
-type HttpServing struct {
+type HTTPServer struct {
 	BindAddress string `json:"BindAddress" env:"ADDRESS" validate:"required"`
 }
