@@ -14,9 +14,9 @@ func Test_loadConfig(t *testing.T) {
 		{
 			name: "корректная загрузка",
 			want: &Config{
-				PollInterval:    2,
-				ReportInterval:  10,
-				HTTPBindAddress: ":8080",
+				HTTPServer{
+					BindAddress: ":8080",
+				},
 			},
 			wantErr: false,
 		},
@@ -42,7 +42,7 @@ func Test_getConfigFile(t *testing.T) {
 	}{
 		{
 			name: "success case",
-			want: []string{"../../../configs/agent.json", "./configs/agent.json"},
+			want: []string{"../../../configs/server.json", "./configs/server.json"},
 		},
 	}
 	for _, tt := range tests {
