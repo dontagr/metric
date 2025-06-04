@@ -7,8 +7,6 @@ import (
 )
 
 var Route = fx.Options(
-	fx.Provide(
-		service.NewUpdateHandler,
-		service.NewServeMux,
-	),
+	fx.Provide(service.NewUpdateHandler),
+	fx.Invoke(service.BindRoutes),
 )

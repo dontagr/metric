@@ -28,3 +28,7 @@ func (m *MemStorage) LoadMetric(id string, mType string) *models.Metrics {
 func (m *MemStorage) SaveMetric(metrics *models.Metrics) {
 	m.collection[fmt.Sprintf("%s_%s", metrics.MType, metrics.ID)] = metrics
 }
+
+func (m *MemStorage) ListMetric() map[string]*models.Metrics {
+	return m.collection
+}

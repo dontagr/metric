@@ -40,3 +40,11 @@ func (m *Metric) ConvertToMetrics(id string, value string) (*models.Metrics, err
 func (m *Metric) Process(_ *models.Metrics, _ *models.Metrics) error {
 	return nil
 }
+
+func (m *Metric) ReturnValue(metrics *models.Metrics) string {
+	if metrics.Value == nil {
+		return "0"
+	}
+
+	return strconv.FormatFloat(*metrics.Value, 'f', -1, 64)
+}

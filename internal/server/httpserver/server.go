@@ -3,31 +3,27 @@ package httpserver
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 
+	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
 
 	"github.com/dontagr/metric/internal/server/config"
 )
 
 type HTTPServer struct {
-	Master *http.Server
+	Master *echo.Echo
 }
 
-func NewServer(cfg *config.Config, mux *http.ServeMux, lc fx.Lifecycle, shutdowner fx.Shutdowner) *HTTPServer {
-	mainServer := &http.Server{Addr: cfg.HTTPServer.BindAddress, Handler: mux}
+func NewServer(cfg *config.Config, lc fx.Lifecycle, shutdowner fx.Shutdowner) *HTTPServer {
+	mainServer := echo.New()
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			ln, err := net.Listen("tcp", mainServer.Addr)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("Starting HTTP server. Bind: %s\n", mainServer.Addr)
+			fmt.Printf("Starting HTTP server. Bind: %s\n", cfg.HTTPServer.BindAddress)
 			go func() {
-				err := mainServer.Serve(ln)
-				if err != nil {
+				if err := mainServer.Start(cfg.HTTPServer.BindAddress); err != nil && err != http.ErrServerClosed {
+					fmt.Println("Failed to HTTP Serve")
 					fmt.Println(err)
 					_ = shutdowner.Shutdown()
 				}

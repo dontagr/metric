@@ -3,7 +3,8 @@ package service
 import (
 	"fmt"
 	"net/http"
-	"strings"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/dontagr/metric/models"
 )
@@ -20,66 +21,92 @@ func NewUpdateHandler(mf *MetricFactory, st Store) *UpdateHandler {
 	}
 }
 
-func (h *UpdateHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodPost {
-		res.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
+type requestData struct {
+	MType  string `param:"mType"`
+	MName  string `param:"mName"`
+	MValue string `param:"mValue"`
+}
 
-	mType, mName, mValue, mLen := getPathVars(req.URL.Path)
-	if mLen == 4 {
-		res.WriteHeader(http.StatusNotFound)
-		return
-	}
-	if mLen != 5 {
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	if !isValidMetricType(mType) {
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	metric, err := h.metricFactory.GetMetric(mType)
+func (h *UpdateHandler) GetMetric(c echo.Context) error {
+	var requestData requestData
+	err := c.Bind(&requestData)
 	if err != nil {
-		fmt.Println(err)
-		res.WriteHeader(http.StatusInternalServerError)
-		return
+		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "Bad request"}
 	}
 
-	newMetric, err := metric.ConvertToMetrics(mName, mValue)
-	if err != nil {
-		fmt.Println(err)
-		res.WriteHeader(http.StatusBadRequest)
-		return
+	if !isValidMetricType(requestData.MType) {
+		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "Invalid type"}
 	}
 
-	oldMetric := h.store.LoadMetric(mName, mType)
-	err = metric.Process(oldMetric, newMetric)
+	oldMetric := h.store.LoadMetric(requestData.MName, requestData.MType)
+	if oldMetric.ID == "" {
+		return &echo.HTTPError{Code: http.StatusNotFound, Message: "Not found"}
+	}
+
+	metricProcessor, err := h.metricFactory.GetMetric(requestData.MType)
 	if err != nil {
-		fmt.Println(err)
-		res.WriteHeader(http.StatusInternalServerError)
-		return
+		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+
+	logs := fmt.Sprintf("GET %s %s\n", requestData.MName, requestData.MType)
+	fmt.Println(logs)
+
+	return c.HTML(200, metricProcessor.ReturnValue(oldMetric))
+}
+
+func (h *UpdateHandler) GetAllMetric(c echo.Context) error {
+	collection := h.store.ListMetric()
+
+	html := ""
+	for _, metrics := range collection {
+		metricProcessor, err := h.metricFactory.GetMetric(metrics.MType)
+		if err != nil {
+			return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
+		}
+
+		html += "<li>" + metrics.ID + ": " + metricProcessor.ReturnValue(metrics) + "</li>\n"
+	}
+
+	if html != "" {
+		html = "<ul>\n" + html + "</ul>\n"
+	}
+
+	return c.HTML(200, "<!DOCTYPE html>\n<html>\n<body>\n"+html+"</body>\n</html>")
+}
+
+func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
+	var requestData requestData
+	err := c.Bind(&requestData)
+	if err != nil {
+		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "Bad request"}
+	}
+
+	if !isValidMetricType(requestData.MType) {
+		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "Invalid type"}
+	}
+
+	metricProcessor, err := h.metricFactory.GetMetric(requestData.MType)
+	if err != nil {
+		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+
+	newMetric, err := metricProcessor.ConvertToMetrics(requestData.MName, requestData.MValue)
+	if err != nil {
+		return &echo.HTTPError{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+
+	oldMetric := h.store.LoadMetric(requestData.MName, requestData.MType)
+	err = metricProcessor.Process(oldMetric, newMetric)
+	if err != nil {
+		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 
 	h.store.SaveMetric(newMetric)
 
-	fmt.Println(newMetric)
-	if newMetric.Value != nil {
-		fmt.Println(*newMetric.Value)
-	}
-	if newMetric.Delta != nil {
-		fmt.Println(*newMetric.Delta)
-	}
-}
+	logs := fmt.Sprintf("POST %s %s %s\n", newMetric.ID, newMetric.MType, metricProcessor.ReturnValue(newMetric))
+	fmt.Println(logs)
 
-func getPathVars(path string) (string, string, string, int) {
-	pathParts := strings.Split(path, "/")
-	if len(pathParts) < 5 {
-		return "", "", "", len(pathParts)
-	}
-
-	return pathParts[2], pathParts[3], pathParts[4], len(pathParts)
+	return c.HTML(200, logs)
 }
 
 func isValidMetricType(mType string) bool {
@@ -90,4 +117,8 @@ func isValidMetricType(mType string) bool {
 		return false
 	}
 	return true
+}
+
+func (h *UpdateHandler) BadRequest(_ echo.Context) error {
+	return &echo.HTTPError{Code: http.StatusBadRequest, Message: ""}
 }

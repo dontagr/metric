@@ -49,3 +49,11 @@ func (m *Metric) Process(oldValue *models.Metrics, newValue *models.Metrics) err
 
 	return nil
 }
+
+func (m *Metric) ReturnValue(metrics *models.Metrics) string {
+	if metrics.Delta == nil {
+		return "0"
+	}
+
+	return strconv.FormatInt(*metrics.Delta, 10)
+}
