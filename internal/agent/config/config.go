@@ -37,6 +37,10 @@ func loadConfig() (*Config, error) {
 
 	if !isTestFlag() {
 		enrichByFlag(&config)
+		err := cleanenv.ReadEnv(&config)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 
 	return &config, nil
@@ -45,6 +49,7 @@ func loadConfig() (*Config, error) {
 func enrichByFlag(config *Config) {
 	flagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	flagSet.SetOutput(os.Stderr)
+	flagSet.Usage = cleanenv.FUsage(flagSet.Output(), config, nil, flagSet.Usage)
 
 	serverAddrBind := flagSet.String("a", "", "bind addr http")
 	reportInterval := flagSet.Int("r", 0, "report interval value in sec")

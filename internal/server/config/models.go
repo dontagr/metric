@@ -9,5 +9,5 @@ type Config struct {
 }
 
 type HTTPServer struct {
-	BindAddress string `json:"BindAddress" env:"ADDRESS" validate:"required"`
+	BindAddress string `json:"BindAddress" env:"ADDRESS" flag:"a" validate:"required"`
 }
