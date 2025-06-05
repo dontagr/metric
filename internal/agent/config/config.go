@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
@@ -34,7 +35,9 @@ func loadConfig() (*Config, error) {
 		return nil, validateError
 	}
 
-	enrichByFlag(&config)
+	if !isTestFlag() {
+		enrichByFlag(&config)
+	}
 
 	return &config, nil
 }
@@ -60,6 +63,18 @@ func enrichByFlag(config *Config) {
 	if *serverAddrBind != "" {
 		config.HTTPBindAddress = *serverAddrBind
 	}
+}
+
+func isTestFlag() bool {
+	for _, arg := range os.Args {
+		fmt.Fprintf(os.Stderr, "arg: %v\n", arg)
+
+		if strings.HasPrefix(arg, "-test.") {
+			return true
+		}
+	}
+
+	return false
 }
 
 func getConfigFile() []string {

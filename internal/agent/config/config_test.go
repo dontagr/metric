@@ -16,7 +16,7 @@ func Test_loadConfig(t *testing.T) {
 			want: &Config{
 				PollInterval:    2,
 				ReportInterval:  10,
-				HTTPBindAddress: ":8080",
+				HTTPBindAddress: "localhost:8080",
 			},
 			wantErr: false,
 		},
