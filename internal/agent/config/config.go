@@ -43,6 +43,7 @@ func enrichByFlag(config *Config) {
 	flagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	flagSet.SetOutput(os.Stderr)
 
+	serverAddrBind := flagSet.String("a", "", "bind addr http")
 	reportInterval := flagSet.Int("r", 0, "report interval value in sec")
 	pollInterval := flagSet.Int("p", 0, "poll interval value in sec")
 	err := flagSet.Parse(os.Args[1:])
@@ -55,6 +56,9 @@ func enrichByFlag(config *Config) {
 	}
 	if *pollInterval != 0 {
 		config.PollInterval = *pollInterval
+	}
+	if *serverAddrBind != "" {
+		config.HTTPBindAddress = *serverAddrBind
 	}
 }
 
