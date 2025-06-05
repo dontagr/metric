@@ -1,7 +1,9 @@
 package config
 
 import (
+	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/go-playground/validator/v10"
@@ -32,7 +34,28 @@ func loadConfig() (*Config, error) {
 		return nil, validateError
 	}
 
+	enrichByFlag(&config)
+
 	return &config, nil
+}
+
+func enrichByFlag(config *Config) {
+	flagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	flagSet.SetOutput(os.Stderr)
+
+	reportInterval := flagSet.Int("r", 0, "report interval value in sec")
+	pollInterval := flagSet.Int("p", 0, "poll interval value in sec")
+	err := flagSet.Parse(os.Args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing flags: %v\n", err)
+		os.Exit(1)
+	}
+	if *reportInterval != 0 {
+		config.ReportInterval = *reportInterval
+	}
+	if *pollInterval != 0 {
+		config.PollInterval = *pollInterval
+	}
 }
 
 func getConfigFile() []string {

@@ -1,7 +1,9 @@
 package config
 
 import (
+	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/go-playground/validator/v10"
@@ -32,7 +34,25 @@ func loadConfig() (*Config, error) {
 		return nil, validateError
 	}
 
+	enrichByFlag(&config)
+
 	return &config, nil
+}
+
+func enrichByFlag(config *Config) {
+	flagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	flagSet.SetOutput(os.Stderr)
+
+	serverAddrBind := flagSet.String("a", "", "bind addr http")
+
+	err := flagSet.Parse(os.Args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing flags: %v\n", err)
+		os.Exit(1)
+	}
+	if *serverAddrBind != "" {
+		config.HTTPServer.BindAddress = *serverAddrBind
+	}
 }
 
 func getConfigFile() []string {
