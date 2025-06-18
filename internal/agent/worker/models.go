@@ -1,0 +1,35 @@
+package worker
+
+import "github.com/dontagr/metric/models"
+
+var EnableStats = map[string]string{
+	"Alloc":         models.Gauge,
+	"BuckHashSys":   models.Gauge,
+	"Frees":         models.Gauge,
+	"GCCPUFraction": models.Gauge,
+	"GCSys":         models.Gauge,
+	"HeapAlloc":     models.Gauge,
+	"HeapIdle":      models.Gauge,
+	"HeapInuse":     models.Gauge,
+	"HeapObjects":   models.Gauge,
+	"HeapReleased":  models.Gauge,
+	"HeapSys":       models.Gauge,
+	"LastGC":        models.Gauge,
+	"Lookups":       models.Gauge,
+	"MSpanInuse":    models.Gauge,
+	"MSpanSys":      models.Gauge,
+	"MCacheInuse":   models.Gauge,
+	"MCacheSys":     models.Gauge,
+	"Mallocs":       models.Gauge,
+	"NextGC":        models.Gauge,
+	"NumGC":         models.Gauge,
+	"NumForcedGC":   models.Gauge,
+	"TotalAlloc":    models.Gauge,
+	"Sys":           models.Gauge,
+	"StackInuse":    models.Gauge,
+	"StackSys":      models.Gauge,
+	"OtherSys":      models.Gauge,
+	"PauseTotalNs":  models.Gauge,
+	"PollCount":     models.Counter,
+	"RandomValue":   models.Gauge,
+}
