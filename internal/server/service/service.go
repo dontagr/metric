@@ -69,6 +69,8 @@ func (h *UpdateHandler) GetAllMetric(c echo.Context) error {
 
 	if html != "" {
 		html = "<ul>\n" + html + "</ul>\n"
+	} else {
+		html = "<p>there are no metrics yet</p>"
 	}
 
 	return c.HTML(200, "<!DOCTYPE html>\n<html>\n<body>\n"+html+"</body>\n</html>")

@@ -6,7 +6,9 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/server/config"
 )
@@ -15,8 +17,27 @@ type HTTPServer struct {
 	Master *echo.Echo
 }
 
-func NewServer(cfg *config.Config, lc fx.Lifecycle, shutdowner fx.Shutdowner) *HTTPServer {
+func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shutdowner fx.Shutdowner) *HTTPServer {
 	mainServer := echo.New()
+
+	mainServer.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:          true,
+		LogMethod:       true,
+		LogStatus:       true,
+		LogError:        true,
+		LogResponseSize: true,
+		LogLatency:      true,
+		HandleError:     true,
+		LogValuesFunc: func(_ echo.Context, v middleware.RequestLoggerValues) error {
+			if v.Error == nil {
+				log.Infow("Request", "Method", v.Method, "URI", v.URI, "Status", v.Status, "Duration", v.Latency, "ResponseSize", v.ResponseSize)
+			} else {
+				log.Errorw(v.Error.Error(), "Method", v.Method, "URI", v.URI, "Status", v.Status, "Duration", v.Latency, "ResponseSize", v.ResponseSize)
+			}
+
+			return nil
+		},
+	}))
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
