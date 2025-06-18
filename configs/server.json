@@ -1,5 +1,8 @@
 {
   "HttpServing": {
     "BindAddress": ":8080"
+  },
+  "Logging": {
+    "LogLevel": "INFO"
   }
 }
