@@ -71,12 +71,12 @@ func (s *Sender) getBody(mType string, index string) (*bytes.Buffer, error) {
 
 	model, err := s.getModel(mType, index, val)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating model for %s: %v\n", mType, err)
+		return nil, fmt.Errorf("error creating model for %s: %v", mType, err)
 	}
 
 	modelJSON, err := json.Marshal(model)
 	if err != nil {
-		return nil, fmt.Errorf("Error marshaling model for %s: %v\n", mType, err)
+		return nil, fmt.Errorf("error marshaling model for %s: %v", mType, err)
 	}
 
 	return bytes.NewBuffer(modelJSON), nil
