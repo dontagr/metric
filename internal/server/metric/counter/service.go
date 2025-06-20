@@ -33,14 +33,6 @@ func (m *Metric) GetMetricsByData(id string, value any) (*models.Metrics, error)
 	}, nil
 }
 
-func (m *Metric) convertToInt64(value any) (int64, error) {
-	if val, ok := value.(int64); ok {
-		return val, nil
-	}
-
-	return 0, fmt.Errorf("не удается преобразовать значение в int64: %v", value)
-}
-
 func (m *Metric) ConvertToMetrics(id string, value string) (*models.Metrics, error) {
 	if id == "" {
 		return nil, fmt.Errorf("id %v is required", id)
