@@ -22,9 +22,12 @@ func NewUpdateHandler(mf *MetricFactory, st Store) *UpdateHandler {
 }
 
 type requestData struct {
-	MType  string `param:"mType"`
-	MName  string `param:"mName"`
-	MValue string `param:"mValue"`
+	MType  string   `param:"mType" json:"type"`
+	MName  string   `param:"mName" json:"id"`
+	MValue string   `param:"mValue"`
+	Delta  *int64   `json:"delta,omitempty"`
+	Value  *float64 `json:"value,omitempty"`
+	Hash   string   `json:"hash,omitempty"`
 }
 
 func (h *UpdateHandler) GetMetric(c echo.Context) error {
@@ -48,8 +51,10 @@ func (h *UpdateHandler) GetMetric(c echo.Context) error {
 		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 
-	logs := fmt.Sprintf("GET %s %s\n", requestData.MName, requestData.MType)
-	fmt.Println(logs)
+	contentType := c.Request().Header.Get(echo.HeaderContentType)
+	if contentType == "application/json" {
+		return c.JSON(200, oldMetric)
+	}
 
 	return c.HTML(200, metricProcessor.ReturnValue(oldMetric))
 }
@@ -82,7 +87,6 @@ func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
 	if err != nil {
 		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "Bad request"}
 	}
-
 	if !isValidMetricType(requestData.MType) {
 		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "Invalid type"}
 	}
@@ -92,9 +96,16 @@ func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
 		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 
-	newMetric, err := metricProcessor.ConvertToMetrics(requestData.MName, requestData.MValue)
-	if err != nil {
-		return &echo.HTTPError{Code: http.StatusBadRequest, Message: err.Error()}
+	var newMetric *models.Metrics
+	if requestData.Delta != nil {
+		newMetric, err = metricProcessor.GetMetricsByData(requestData.MName, *requestData.Delta)
+	} else if requestData.Value != nil {
+		newMetric, err = metricProcessor.GetMetricsByData(requestData.MName, *requestData.Value)
+	} else {
+		newMetric, err = metricProcessor.ConvertToMetrics(requestData.MName, requestData.MValue)
+		if err != nil {
+			return &echo.HTTPError{Code: http.StatusBadRequest, Message: err.Error()}
+		}
 	}
 
 	oldMetric := h.store.LoadMetric(requestData.MName, requestData.MType)
@@ -105,8 +116,12 @@ func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
 
 	h.store.SaveMetric(newMetric)
 
+	contentType := c.Request().Header.Get(echo.HeaderContentType)
+	if contentType == "application/json" {
+		return c.JSON(200, newMetric)
+	}
+
 	logs := fmt.Sprintf("POST %s %s %s\n", newMetric.ID, newMetric.MType, metricProcessor.ReturnValue(newMetric))
-	fmt.Println(logs)
 
 	return c.HTML(200, logs)
 }

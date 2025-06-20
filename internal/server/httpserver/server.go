@@ -28,11 +28,12 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 		LogResponseSize: true,
 		LogLatency:      true,
 		HandleError:     true,
+		LogHeaders:      []string{echo.HeaderContentType},
 		LogValuesFunc: func(_ echo.Context, v middleware.RequestLoggerValues) error {
 			if v.Error == nil {
-				log.Infow("Request", "Method", v.Method, "URI", v.URI, "Status", v.Status, "Duration", v.Latency, "ResponseSize", v.ResponseSize)
+				log.Infow("Request", "Method", v.Method, "URI", v.URI, "Status", v.Status, "Duration", v.Latency, "ResponseSize", v.ResponseSize, "Headers", v.Headers)
 			} else {
-				log.Errorw(v.Error.Error(), "Method", v.Method, "URI", v.URI, "Status", v.Status, "Duration", v.Latency, "ResponseSize", v.ResponseSize)
+				log.Errorw(v.Error.Error(), "Method", v.Method, "URI", v.URI, "Status", v.Status, "Duration", v.Latency, "ResponseSize", v.ResponseSize, "Headers", v.Headers)
 			}
 
 			return nil
