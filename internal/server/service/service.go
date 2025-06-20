@@ -103,9 +103,9 @@ func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
 		newMetric, err = metricProcessor.GetMetricsByData(requestData.MName, *requestData.Value)
 	} else {
 		newMetric, err = metricProcessor.ConvertToMetrics(requestData.MName, requestData.MValue)
-		if err != nil {
-			return &echo.HTTPError{Code: http.StatusBadRequest, Message: err.Error()}
-		}
+	}
+	if err != nil {
+		return &echo.HTTPError{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 
 	oldMetric := h.store.LoadMetric(requestData.MName, requestData.MType)
