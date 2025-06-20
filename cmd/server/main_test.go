@@ -22,6 +22,7 @@ func TestCreateApp(t *testing.T) {
 				bootstrap.Route,
 				bootstrap.Service,
 				bootstrap.Store,
+				bootstrap.Logger,
 			),
 		},
 	}
