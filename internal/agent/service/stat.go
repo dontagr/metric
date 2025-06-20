@@ -6,7 +6,7 @@ import (
 )
 
 type Stats struct {
-	PollCount     int64
+	PollCount     int
 	RandomValue   float64
 	Alloc         uint64
 	BuckHashSys   uint64

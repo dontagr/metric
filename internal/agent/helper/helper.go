@@ -9,6 +9,8 @@ func ConvertReflectValueToInt64(val reflect.Value) (int64, error) {
 	underlyingValue := val.Interface()
 
 	switch v := underlyingValue.(type) {
+	case int:
+		return int64(v), nil
 	case int64:
 		return v, nil
 	default:
