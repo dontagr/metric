@@ -21,14 +21,15 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 	mainServer := echo.New()
 
 	mainServer.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
-		LogURI:          true,
-		LogMethod:       true,
-		LogStatus:       true,
-		LogError:        true,
-		LogResponseSize: true,
-		LogLatency:      true,
-		HandleError:     true,
-		LogHeaders:      []string{echo.HeaderContentType},
+		LogURI:           true,
+		LogMethod:        true,
+		LogStatus:        true,
+		LogError:         true,
+		LogResponseSize:  true,
+		LogContentLength: true,
+		LogLatency:       true,
+		HandleError:      true,
+		LogHeaders:       []string{echo.HeaderContentType},
 		LogValuesFunc: func(_ echo.Context, v middleware.RequestLoggerValues) error {
 			if v.Error == nil {
 				log.Infow("Request", "Method", v.Method, "URI", v.URI, "Status", v.Status, "Duration", v.Latency, "ResponseSize", v.ResponseSize, "Headers", v.Headers)
@@ -39,6 +40,13 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 			return nil
 		},
 	}))
+	mainServer.Use(middleware.Decompress())
+	mainServer.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+		Skipper:   middleware.DefaultGzipConfig.Skipper,
+		Level:     -1,
+		MinLength: 10,
+	}))
+	mainServer.Use(middleware.Recover())
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {

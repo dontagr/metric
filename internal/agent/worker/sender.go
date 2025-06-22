@@ -2,6 +2,7 @@ package worker
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -46,26 +47,56 @@ func (s *Sender) Handle() {
 		for index, mType := range EnableStats {
 			body, err := s.getBody(mType, index)
 			if err != nil {
-				fmt.Printf("Error get body for index %s\n", index)
+				fmt.Printf("Error get body for index %s: %v\n", index, err)
 				continue
 			}
 
-			resp, err := http.Post(
+			compressedBody, err := s.compress(body)
+			if err != nil {
+				fmt.Printf("Error with compress for index %s: %v\n", index, err)
+				continue
+			}
+
+			req, err := http.NewRequest(
+				"POST",
 				fmt.Sprintf("http://%s/update/", s.cfg.HTTPBindAddress),
-				"application/json",
-				body,
+				compressedBody,
 			)
 			if err != nil {
-				fmt.Printf("Error sending data for %s: %v\n", mType, err)
+				fmt.Printf("Error creating request for %s: %v\n", mType, err)
 				continue
+			}
+			req.Header.Set("Content-Encoding", "gzip")
+			req.Header.Set("Content-Type", "application/json")
+
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				fmt.Printf("Error sending data for %s: %v\n", mType, err)
 			}
 			err = resp.Body.Close()
 			if err != nil {
-				fmt.Printf("Error sending data for %s: %v\n", mType, err)
+				fmt.Printf("Error closing response body for %s: %v\n", mType, err)
 			}
 		}
 	}
 }
+
+func (s *Sender) compress(body *bytes.Buffer) (*bytes.Buffer, error) {
+	var compressedBody bytes.Buffer
+	gzipWriter := gzip.NewWriter(&compressedBody)
+
+	_, err := gzipWriter.Write(body.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("error compressing data: %v", err)
+	}
+	if err := gzipWriter.Close(); err != nil {
+		return nil, fmt.Errorf("error closing Gzip writer: %v", err)
+	}
+
+	return &compressedBody, nil
+}
+
 func (s *Sender) getBody(mType string, index string) (*bytes.Buffer, error) {
 	val := reflect.ValueOf(*s.stats).FieldByName(index)
 
