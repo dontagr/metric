@@ -39,6 +39,8 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 			return nil
 		},
 	}))
+	mainServer.Use(middleware.Decompress())
+	mainServer.Use(middleware.Gzip())
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
