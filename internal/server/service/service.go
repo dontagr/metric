@@ -31,7 +31,7 @@ func NewUpdateHandler(mf *MetricFactory, st Store, event *event.Event, cnf *conf
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			if uh.isDirectBackup == false {
+			if !uh.isDirectBackup {
 				go uh.autoBackUp(cnf.Store.Interval)
 				fmt.Printf("\u001B[032mМетрики бэкапятся каждые %v секунд\u001B[0m\n", cnf.Store.Interval)
 			} else {
@@ -147,7 +147,7 @@ func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
 	}
 
 	h.store.SaveMetric(newMetric)
-	if h.isDirectBackup == true {
+	if h.isDirectBackup {
 		h.event.Metrics <- h.store.ListMetric()
 	}
 

@@ -28,18 +28,18 @@ func (f *FlagEnricher) Process(cnf *Config) error {
 		cnf.HTTPServer.BindAddress = *serverAddrBind
 	}
 
-	_, exists := os.LookupEnv(ENV_STORE_INTERVAL)
-	if exists == false && *storeInterval != 0 {
+	_, exists := os.LookupEnv(EnvStoreInterval)
+	if !exists && *storeInterval != 0 {
 		cnf.Store.Interval = *storeInterval
 	}
 
-	_, exists = os.LookupEnv(ENV_FILE_STORAGE_PATH)
-	if exists == false && *storeFilePath != "" {
+	_, exists = os.LookupEnv(EnvFileStoragePath)
+	if !exists && *storeFilePath != "" {
 		cnf.Store.FilePath = *storeFilePath
 	}
 
-	_, exists = os.LookupEnv(ENV_RESTORE)
-	if exists == false {
+	_, exists = os.LookupEnv(EnvRestore)
+	if !exists {
 		cnf.Store.Restore = *storeRestore
 	}
 

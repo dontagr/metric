@@ -35,7 +35,7 @@ func NewRecovery(st Store, filer *file.Filer, cfg *config.Config, lc fx.Lifecycl
 }
 
 func (r *Recovery) ResetStoreData() {
-	if r.autoRestore == false {
+	if !r.autoRestore {
 		return
 	}
 

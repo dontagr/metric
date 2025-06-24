@@ -1,8 +1,8 @@
 package config
 
-const ENV_STORE_INTERVAL = "STORE_INTERVAL"
-const ENV_FILE_STORAGE_PATH = "FILE_STORAGE_PATH"
-const ENV_RESTORE = "RESTORE"
+const EnvStoreInterval = "STORE_INTERVAL"
+const EnvFileStoragePath = "FILE_STORAGE_PATH"
+const EnvRestore = "RESTORE"
 
 type Config struct {
 	Log        Logging    `json:"Logging"`
