@@ -32,3 +32,9 @@ func (m *MemStorage) SaveMetric(metrics *models.Metrics) {
 func (m *MemStorage) ListMetric() map[string]*models.Metrics {
 	return m.collection
 }
+
+func (m *MemStorage) RestoreMetricCollection(collection map[string]*models.Metrics) {
+	m.collection = collection
+
+	fmt.Printf("\u001B[032mДанные хранилища востановлены, всего метрик: %d\u001B[0m\n", len(collection))
+}

@@ -4,5 +4,11 @@
   },
   "Logging": {
     "LogLevel": "INFO"
+  },
+  "Store": {
+    "Interval": 0,
+    "FilePath": "./",
+    "FileName": "bochenok_s_medom",
+    "Restore": true
   }
 }

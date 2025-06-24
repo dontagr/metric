@@ -18,5 +18,6 @@ func CreateApp() fx.Option {
 		bootstrap.Service,
 		bootstrap.Store,
 		bootstrap.Logger,
+		bootstrap.Filer,
 	)
 }

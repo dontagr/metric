@@ -9,6 +9,7 @@ type (
 		LoadMetric(id string, mType string) *models.Metrics
 		SaveMetric(metrics *models.Metrics)
 		ListMetric() map[string]*models.Metrics
+		RestoreMetricCollection(collection map[string]*models.Metrics)
 	}
 	Metric interface {
 		GetName() string
