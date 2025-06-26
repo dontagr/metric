@@ -17,6 +17,12 @@ var Postgress = fx.Options(
 )
 
 func newPostgresConnect(cfg *config.Config, lc fx.Lifecycle) (*pgxpool.Pool, error) {
+	if !cfg.DataBase.Init {
+		fmt.Println("Коннект с базой не был инициализирован")
+
+		return nil, nil
+	}
+
 	dbpool, err := pgxpool.New(context.Background(), cfg.DataBase.DatabaseDsn)
 	if err != nil {
 		fmt.Printf("Unable to connect to database: %v", err)
