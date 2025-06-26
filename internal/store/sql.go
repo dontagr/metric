@@ -19,17 +19,17 @@ const (
 	  "hash" VARCHAR(255) not null,
 	  constraint "metric_pkey" primary key ("id", "mtype")
 	)`
-	insertSql = `INSERT INTO metric (id, mtype, delta, value, hash) 
+	insertSQL = `INSERT INTO metric (id, mtype, delta, value, hash) 
 	  VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id, mtype) DO UPDATE SET
 	  mtype = EXCLUDED.mtype,
 	  delta = EXCLUDED.delta,
 	  value = EXCLUDED.value,
 	  hash = EXCLUDED.hash`
-	searchSql = `SELECT id, mtype, delta, value, hash 
+	searchSQL = `SELECT id, mtype, delta, value, hash 
       FROM metric 
       WHERE id=$1 AND mtype=$2`
-	selectAllSql = `SELECT id, mtype, delta, value, hash FROM metric`
-	truncateSql  = `TRUNCATE TABLE metric`
+	selectAllSQL = `SELECT id, mtype, delta, value, hash FROM metric`
+	truncateSQL  = `TRUNCATE TABLE metric`
 )
 
 type pg struct {
@@ -68,7 +68,7 @@ func (pg *pg) LoadMetric(id string, mType string) *models.Metrics {
 
 	err := pg.dbpool.QueryRow(
 		context.Background(),
-		searchSql,
+		searchSQL,
 		id, mType,
 	).Scan(&metrics.ID, &metrics.MType, &metrics.Delta, &metrics.Value, &metrics.Hash)
 	if err != nil {
@@ -83,7 +83,7 @@ func (pg *pg) LoadMetric(id string, mType string) *models.Metrics {
 func (pg *pg) SaveMetric(metrics *models.Metrics) {
 	id, mtype, delta, value, hash := pg.unpack(metrics)
 
-	_, err := pg.dbpool.Exec(context.Background(), insertSql, id, mtype, delta, value, hash)
+	_, err := pg.dbpool.Exec(context.Background(), insertSQL, id, mtype, delta, value, hash)
 	if err != nil {
 		fmt.Printf("Ошибка при сохранении метрики: %v\n", err)
 	}
@@ -96,7 +96,7 @@ func (pg *pg) unpack(metrics *models.Metrics) (string, string, *int64, *float64,
 func (pg *pg) ListMetric() map[string]*models.Metrics {
 	r := make(map[string]*models.Metrics)
 
-	rows, err := pg.dbpool.Query(context.Background(), selectAllSql)
+	rows, err := pg.dbpool.Query(context.Background(), selectAllSQL)
 	if err != nil {
 		fmt.Printf("Ошибка при извлечении метрик: %v\n", err)
 		return r
@@ -135,7 +135,7 @@ func (pg *pg) RestoreMetricCollection(collection map[string]*models.Metrics) {
 		}
 	}(&txErr, len(collection))
 
-	_, execErr := tx.Exec(context.Background(), truncateSql)
+	_, execErr := tx.Exec(context.Background(), truncateSQL)
 	if execErr != nil {
 		fmt.Printf("Ошибка при восстановлении метрики: %v\n", execErr)
 		txErr = execErr
@@ -143,7 +143,7 @@ func (pg *pg) RestoreMetricCollection(collection map[string]*models.Metrics) {
 	}
 
 	for _, metrics := range collection {
-		_, execErr := tx.Exec(context.Background(), insertSql, metrics.ID, metrics.MType, metrics.Delta, metrics.Value, metrics.Hash)
+		_, execErr := tx.Exec(context.Background(), insertSQL, metrics.ID, metrics.MType, metrics.Delta, metrics.Value, metrics.Hash)
 		if execErr != nil {
 			fmt.Printf("Ошибка при восстановлении метрики (id: %s, mtype: %s): %v\n", metrics.ID, metrics.MType, execErr)
 			txErr = execErr

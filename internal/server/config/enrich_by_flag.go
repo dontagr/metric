@@ -32,7 +32,7 @@ func (f *FlagEnricher) Process(cnf *Config) error {
 	if *databaseDsn != "" {
 		cnf.DataBase.DatabaseDsn = *databaseDsn
 		cnf.DataBase.Init = true
-	} else if _, exists := os.LookupEnv(DatabaseDsn); exists {
+	} else if val, exists := os.LookupEnv(DatabaseDsn); exists && val != "" {
 		cnf.DataBase.Init = true
 	}
 
