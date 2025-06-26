@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/fx"
 
 	"github.com/dontagr/metric/internal/server/config"
@@ -16,8 +16,8 @@ var Postgress = fx.Options(
 	),
 )
 
-func newPostgresConnect(cfg *config.Config, lc fx.Lifecycle) (*pgx.Conn, error) {
-	conn, err := pgx.Connect(context.Background(), cfg.DataBase.DatabaseDsn)
+func newPostgresConnect(cfg *config.Config, lc fx.Lifecycle) (*pgxpool.Pool, error) {
+	dbpool, err := pgxpool.New(context.Background(), cfg.DataBase.DatabaseDsn)
 	if err != nil {
 		fmt.Printf("Unable to connect to database: %v", err)
 
@@ -26,10 +26,11 @@ func newPostgresConnect(cfg *config.Config, lc fx.Lifecycle) (*pgx.Conn, error) 
 	}
 
 	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			return conn.Close(ctx)
+		OnStop: func(_ context.Context) error {
+			dbpool.Close()
+			return nil
 		},
 	})
 
-	return conn, nil
+	return dbpool, nil
 }

@@ -13,11 +13,11 @@ func main() {
 func CreateApp() fx.Option {
 	return fx.Options(
 		bootstrap.Postgress,
+		bootstrap.Store,
 		bootstrap.Config,
 		bootstrap.Server,
 		bootstrap.Route,
 		bootstrap.Service,
-		bootstrap.Store,
 		bootstrap.Logger,
 		bootstrap.Filer,
 	)

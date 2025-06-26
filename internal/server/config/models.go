@@ -3,6 +3,7 @@ package config
 const EnvStoreInterval = "STORE_INTERVAL"
 const EnvFileStoragePath = "FILE_STORAGE_PATH"
 const EnvRestore = "RESTORE"
+const DatabaseDsn = "DATABASE_DSN"
 
 type Config struct {
 	Log        Logging    `json:"Logging"`
@@ -13,6 +14,7 @@ type Config struct {
 
 type DataBase struct {
 	DatabaseDsn string `json:"DatabaseDsn" env:"DATABASE_DSN" flag:"d"`
+	Init        bool   `env-default:"false"`
 }
 
 type HTTPServer struct {

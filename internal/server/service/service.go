@@ -6,30 +6,41 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
 
 	"github.com/dontagr/metric/internal/server/config"
 	"github.com/dontagr/metric/internal/server/service/event"
+	"github.com/dontagr/metric/internal/server/service/intersaces"
+	"github.com/dontagr/metric/internal/store"
 	"github.com/dontagr/metric/models"
 )
 
 type UpdateHandler struct {
 	metricFactory  *MetricFactory
-	store          Store
+	store          intersaces.Store
 	event          *event.Event
 	isDirectBackup bool
-	db             *pgx.Conn
 }
 
-func NewUpdateHandler(conn *pgx.Conn, mf *MetricFactory, st Store, event *event.Event, cnf *config.Config, lc fx.Lifecycle) *UpdateHandler {
+func NewUpdateHandler(mf *MetricFactory, sf *store.StoreFactory, event *event.Event, cnf *config.Config, lc fx.Lifecycle) (*UpdateHandler, error) {
+	var storeName string
+	if cnf.DataBase.Init {
+		storeName = models.StorePg
+	} else {
+		storeName = models.StoreMem
+	}
+
+	storage, err := sf.GetStore(storeName)
+	if err != nil {
+		return nil, err
+	}
+
 	uh := UpdateHandler{
 		metricFactory:  mf,
-		store:          st,
+		store:          storage,
 		event:          event,
 		isDirectBackup: cnf.Store.Interval == 0,
-		db:             conn,
 	}
 
 	lc.Append(fx.Hook{
@@ -45,7 +56,7 @@ func NewUpdateHandler(conn *pgx.Conn, mf *MetricFactory, st Store, event *event.
 		},
 	})
 
-	return &uh
+	return &uh, nil
 }
 
 type requestData struct {
@@ -181,7 +192,7 @@ func (h *UpdateHandler) BadRequest(_ echo.Context) error {
 func (h *UpdateHandler) Ping(c echo.Context) error {
 	ctx := context.Background()
 
-	err := h.db.Ping(ctx)
+	err := h.store.Ping(ctx)
 	if err != nil {
 		return err
 	}

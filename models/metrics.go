@@ -1,8 +1,10 @@
 package models
 
 const (
-	Counter = "counter"
-	Gauge   = "gauge"
+	Counter  = "counter"
+	Gauge    = "gauge"
+	StoreMem = "memory"
+	StorePg  = "postgress"
 )
 
 // NOTE: Не усложняем пример, вводя иерархическую вложенность структур.
