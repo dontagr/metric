@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/fx"
@@ -22,6 +23,11 @@ const (
 	insertSQL = `INSERT INTO metric (id, mtype, delta, value, hash) 
 	  VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id, mtype) DO UPDATE SET
 	  mtype = EXCLUDED.mtype,
+	  delta = EXCLUDED.delta,
+	  value = EXCLUDED.value,
+	  hash = EXCLUDED.hash`
+	bulkInsertSQL = `INSERT INTO metric (id, mtype, delta, value, hash)
+	  VALUES %s ON CONFLICT (id, mtype) DO UPDATE SET
 	  delta = EXCLUDED.delta,
 	  value = EXCLUDED.value,
 	  hash = EXCLUDED.hash`
@@ -142,13 +148,22 @@ func (pg *pg) RestoreMetricCollection(collection map[string]*models.Metrics) {
 		return
 	}
 
+	values := []interface{}{}
+	valueStrings := []string{}
+	i := 0
+
 	for _, metrics := range collection {
-		_, execErr := tx.Exec(context.Background(), insertSQL, metrics.ID, metrics.MType, metrics.Delta, metrics.Value, metrics.Hash)
-		if execErr != nil {
-			fmt.Printf("Ошибка при восстановлении метрики (id: %s, mtype: %s): %v\n", metrics.ID, metrics.MType, execErr)
-			txErr = execErr
-			return
-		}
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i+1, i+2, i+3, i+4, i+5))
+		values = append(values, metrics.ID, metrics.MType, metrics.Delta, metrics.Value, metrics.Hash)
+		i += 5
+	}
+
+	sqlStr := fmt.Sprintf(bulkInsertSQL, strings.Join(valueStrings, ","))
+	_, execErr = tx.Exec(context.Background(), sqlStr, values...)
+	if execErr != nil {
+		fmt.Printf("Ошибка при восстановлении метрик: %v\n", execErr)
+		txErr = execErr
+		return
 	}
 }
 

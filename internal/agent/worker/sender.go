@@ -13,7 +13,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/dontagr/metric/internal/agent/config"
-	"github.com/dontagr/metric/internal/agent/helper"
+	"github.com/dontagr/metric/internal/agent/converter"
 	"github.com/dontagr/metric/internal/agent/service"
 	"github.com/dontagr/metric/models"
 )
@@ -128,7 +128,7 @@ func (s *Sender) getModel(mType string, index string, val reflect.Value) (*model
 }
 
 func (s *Sender) getGaugeModel(mType string, index string, val reflect.Value) (*models.Metrics, error) {
-	value, err := helper.ConvertReflectValueToFloat64(val)
+	value, err := converter.ReflectValueToFloat64(val)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (s *Sender) getGaugeModel(mType string, index string, val reflect.Value) (*
 }
 
 func (s *Sender) getCounterModel(mType string, index string, val reflect.Value) (*models.Metrics, error) {
-	value, err := helper.ConvertReflectValueToInt64(val)
+	value, err := converter.ReflectValueToInt64(val)
 	if err != nil {
 		return nil, err
 	}
