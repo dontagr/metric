@@ -1,6 +1,8 @@
-package service
+package intersaces
 
 import (
+	"context"
+
 	"github.com/dontagr/metric/models"
 )
 
@@ -10,6 +12,8 @@ type (
 		SaveMetric(metrics *models.Metrics)
 		ListMetric() map[string]*models.Metrics
 		RestoreMetricCollection(collection map[string]*models.Metrics)
+		GetName() string
+		Ping(ctx context.Context) error
 	}
 	Metric interface {
 		GetName() string

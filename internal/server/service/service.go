@@ -11,20 +11,34 @@ import (
 
 	"github.com/dontagr/metric/internal/server/config"
 	"github.com/dontagr/metric/internal/server/service/event"
+	"github.com/dontagr/metric/internal/server/service/intersaces"
+	"github.com/dontagr/metric/internal/store"
 	"github.com/dontagr/metric/models"
 )
 
 type UpdateHandler struct {
 	metricFactory  *MetricFactory
-	store          Store
+	store          intersaces.Store
 	event          *event.Event
 	isDirectBackup bool
 }
 
-func NewUpdateHandler(mf *MetricFactory, st Store, event *event.Event, cnf *config.Config, lc fx.Lifecycle) *UpdateHandler {
+func NewUpdateHandler(mf *MetricFactory, sf *store.StoreFactory, event *event.Event, cnf *config.Config, lc fx.Lifecycle) (*UpdateHandler, error) {
+	var storeName string
+	if cnf.DataBase.Init {
+		storeName = models.StorePg
+	} else {
+		storeName = models.StoreMem
+	}
+
+	storage, err := sf.GetStore(storeName)
+	if err != nil {
+		return nil, err
+	}
+
 	uh := UpdateHandler{
 		metricFactory:  mf,
-		store:          st,
+		store:          storage,
 		event:          event,
 		isDirectBackup: cnf.Store.Interval == 0,
 	}
@@ -42,7 +56,7 @@ func NewUpdateHandler(mf *MetricFactory, st Store, event *event.Event, cnf *conf
 		},
 	})
 
-	return &uh
+	return &uh, nil
 }
 
 type requestData struct {
@@ -173,4 +187,15 @@ func isValidMetricType(mType string) bool {
 
 func (h *UpdateHandler) BadRequest(_ echo.Context) error {
 	return &echo.HTTPError{Code: http.StatusBadRequest, Message: ""}
+}
+
+func (h *UpdateHandler) Ping(c echo.Context) error {
+	ctx := context.Background()
+
+	err := h.store.Ping(ctx)
+	if err != nil {
+		return err
+	}
+
+	return c.String(http.StatusOK, "")
 }
