@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/fx"
 
@@ -78,7 +79,9 @@ func (pg *pg) LoadMetric(id string, mType string) *models.Metrics {
 		id, mType,
 	).Scan(&metrics.ID, &metrics.MType, &metrics.Delta, &metrics.Value, &metrics.Hash)
 	if err != nil {
-		fmt.Printf("Загрузка не удалась для (id: %s, mtype: %s): %v\n", id, mType, err)
+		if err != pgx.ErrNoRows {
+			fmt.Printf("Загрузка не удалась для (id: %s, mtype: %s): %v\n", id, mType, err)
+		}
 
 		return &models.Metrics{}
 	}
@@ -92,6 +95,43 @@ func (pg *pg) SaveMetric(metrics *models.Metrics) {
 	_, err := pg.dbpool.Exec(context.Background(), insertSQL, id, mtype, delta, value, hash)
 	if err != nil {
 		fmt.Printf("Ошибка при сохранении метрики: %v\n", err)
+	}
+}
+
+func (pg *pg) BulkSaveMetric(metrics map[string]*models.Metrics) {
+	tx, txErr := pg.dbpool.Begin(context.Background())
+	if txErr != nil {
+		fmt.Printf("Ошибка начала транзакции: %v\n", txErr)
+		return
+	}
+	defer func(txErr *error) {
+		if *txErr != nil {
+			if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
+				fmt.Printf("Ошибка отката транзакции: %v\n", rollbackErr)
+			}
+		} else {
+			if commitErr := tx.Commit(context.Background()); commitErr != nil {
+				fmt.Printf("Ошибка при коммите транзакции: %v\n", commitErr)
+			}
+		}
+	}(&txErr)
+
+	values := make([]interface{}, 0, len(metrics)*5)
+	valueStrings := make([]string, 0, len(metrics))
+	i := 0
+
+	for _, metric := range metrics {
+		valueStrings = append(valueStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)", i+1, i+2, i+3, i+4, i+5))
+		values = append(values, metric.ID, metric.MType, metric.Delta, metric.Value, metric.Hash)
+		i += 5
+	}
+
+	sqlStr := fmt.Sprintf(bulkInsertSQL, strings.Join(valueStrings, ","))
+	_, execErr := tx.Exec(context.Background(), sqlStr, values...)
+	if execErr != nil {
+		fmt.Printf("Ошибка при массовом обновлении метрик: %v\n", execErr)
+		txErr = execErr
+		return
 	}
 }
 
@@ -148,8 +188,8 @@ func (pg *pg) RestoreMetricCollection(collection map[string]*models.Metrics) {
 		return
 	}
 
-	values := []interface{}{}
-	valueStrings := []string{}
+	values := make([]interface{}, 0, len(collection)*5)
+	valueStrings := make([]string, 0, len(collection))
 	i := 0
 
 	for _, metrics := range collection {

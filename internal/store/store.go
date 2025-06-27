@@ -40,6 +40,12 @@ func (m *MemStorage) SaveMetric(metrics *models.Metrics) {
 	m.collection[fmt.Sprintf("%s_%s", metrics.MType, metrics.ID)] = metrics
 }
 
+func (m *MemStorage) BulkSaveMetric(metrics map[string]*models.Metrics) {
+	for _, metric := range metrics {
+		m.collection[fmt.Sprintf("%s_%s", metric.MType, metric.ID)] = metric
+	}
+}
+
 func (m *MemStorage) ListMetric() map[string]*models.Metrics {
 	return m.collection
 }

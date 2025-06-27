@@ -42,42 +42,52 @@ func NewSender(cfg *config.Config, stats *service.Stats, lc fx.Lifecycle) *Sende
 
 func (s *Sender) Handle() {
 	client := &http.Client{}
-	url := fmt.Sprintf("http://%s/update/", s.cfg.HTTPBindAddress)
+	url := fmt.Sprintf("http://%s/updates/", s.cfg.HTTPBindAddress)
 	for {
 		time.Sleep(time.Duration(s.cfg.ReportInterval) * time.Second)
 		fmt.Printf("sender run with %v\n", s.stats.PollCount)
+
+		metrics := make([]*models.Metrics, 0, len(EnableStats))
 		for index, mType := range EnableStats {
-			body, err := s.getBody(mType, index)
+			metric, err := s.getMetric(mType, index)
 			if err != nil {
-				fmt.Printf("Error get body for index %s: %v\n", index, err)
+				fmt.Printf("Error get metrics for index %s: %v\n", index, err)
 				continue
 			}
 
-			compressedBody, err := s.compress(body)
-			if err != nil {
-				fmt.Printf("Error with compress for index %s: %v\n", index, err)
-				continue
-			}
+			metrics = append(metrics, metric)
+		}
 
-			req, err := http.NewRequest("POST", url, compressedBody)
-			if err != nil {
-				fmt.Printf("Error creating request for %s: %v\n", mType, err)
-				continue
-			}
+		body, err := s.getBody(metrics)
+		if err != nil {
+			fmt.Printf("Error get body: %v\n", err)
+			continue
+		}
 
-			req.Header.Set("Content-Encoding", "gzip")
-			req.Header.Set("Content-Type", "application/json")
+		compressedBody, err := s.compress(body)
+		if err != nil {
+			fmt.Printf("Error with compress: %v\n", err)
+			continue
+		}
 
-			resp, err := client.Do(req)
-			if err != nil {
-				fmt.Printf("Error sending data for %s: %v\n", mType, err)
-				continue
-			}
-			err = resp.Body.Close()
-			if err != nil {
-				fmt.Printf("Error closing response body for %s: %v\n", mType, err)
-				continue
-			}
+		req, err := http.NewRequest("POST", url, compressedBody)
+		if err != nil {
+			fmt.Printf("Error creating request: %v\n", err)
+			continue
+		}
+
+		req.Header.Set("Content-Encoding", "gzip")
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Printf("Error sending data: %v\n", err)
+			continue
+		}
+		err = resp.Body.Close()
+		if err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+			continue
 		}
 	}
 }
@@ -103,7 +113,7 @@ func (s *Sender) compress(body *bytes.Buffer) (*bytes.Buffer, error) {
 	return &compressedBody, nil
 }
 
-func (s *Sender) getBody(mType string, index string) (*bytes.Buffer, error) {
+func (s *Sender) getMetric(mType string, index string) (*models.Metrics, error) {
 	val := reflect.ValueOf(*s.stats).FieldByName(index)
 
 	model, err := s.getModel(mType, index, val)
@@ -111,9 +121,13 @@ func (s *Sender) getBody(mType string, index string) (*bytes.Buffer, error) {
 		return nil, fmt.Errorf("error creating model for %s: %v", mType, err)
 	}
 
-	modelJSON, err := json.Marshal(model)
+	return model, nil
+}
+
+func (s *Sender) getBody(body []*models.Metrics) (*bytes.Buffer, error) {
+	modelJSON, err := json.Marshal(body)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling model for %s: %v", mType, err)
+		return nil, fmt.Errorf("error marshaling body: %v", err)
 	}
 
 	return bytes.NewBuffer(modelJSON), nil

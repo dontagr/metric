@@ -10,6 +10,7 @@ type (
 	Store interface {
 		LoadMetric(id string, mType string) *models.Metrics
 		SaveMetric(metrics *models.Metrics)
+		BulkSaveMetric(metrics map[string]*models.Metrics)
 		ListMetric() map[string]*models.Metrics
 		RestoreMetricCollection(collection map[string]*models.Metrics)
 		GetName() string
