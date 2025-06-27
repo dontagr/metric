@@ -2,19 +2,21 @@ package service
 
 import (
 	"fmt"
+
+	"github.com/dontagr/metric/internal/server/service/intersaces"
 )
 
 type MetricFactory struct {
-	Collection map[string]Metric
+	Collection map[string]intersaces.Metric
 }
 
 func NewMetricFactory() *MetricFactory {
 	return &MetricFactory{
-		Collection: make(map[string]Metric),
+		Collection: make(map[string]intersaces.Metric),
 	}
 }
 
-func (f *MetricFactory) GetMetric(name string) (Metric, error) {
+func (f *MetricFactory) GetMetric(name string) (intersaces.Metric, error) {
 	if val, ok := f.Collection[name]; ok {
 		return val, nil
 	}
@@ -22,6 +24,6 @@ func (f *MetricFactory) GetMetric(name string) (Metric, error) {
 	return nil, fmt.Errorf("metric with name %s not found", name)
 }
 
-func (f *MetricFactory) SetMetric(p Metric) {
+func (f *MetricFactory) SetMetric(p intersaces.Metric) {
 	f.Collection[p.GetName()] = p
 }

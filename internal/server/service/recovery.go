@@ -8,19 +8,32 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/dontagr/metric/internal/server/config"
-	"github.com/dontagr/metric/internal/server/file"
+	"github.com/dontagr/metric/internal/server/service/intersaces"
+	"github.com/dontagr/metric/internal/store"
 	"github.com/dontagr/metric/models"
 )
 
 type Recovery struct {
-	store       Store
-	filer       *file.Filer
+	store       intersaces.Store
+	filer       *store.Filer
 	autoRestore bool
 }
 
-func NewRecovery(st Store, filer *file.Filer, cfg *config.Config, lc fx.Lifecycle) *Recovery {
+func NewRecovery(sf *store.StoreFactory, filer *store.Filer, cfg *config.Config, lc fx.Lifecycle) (*Recovery, error) {
+	var storeName string
+	if cfg.DataBase.Init {
+		storeName = models.StorePg
+	} else {
+		storeName = models.StoreMem
+	}
+
+	storage, err := sf.GetStore(storeName)
+	if err != nil {
+		return nil, err
+	}
+
 	r := Recovery{
-		store:       st,
+		store:       storage,
 		filer:       filer,
 		autoRestore: cfg.Store.Restore,
 	}
@@ -31,7 +44,7 @@ func NewRecovery(st Store, filer *file.Filer, cfg *config.Config, lc fx.Lifecycl
 			return nil
 		},
 	})
-	return &r
+	return &r, nil
 }
 
 func (r *Recovery) ResetStoreData() {
