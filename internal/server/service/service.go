@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"go.uber.org/fx"
 
@@ -19,14 +20,16 @@ type UpdateHandler struct {
 	store          Store
 	event          *event.Event
 	isDirectBackup bool
+	db             *pgx.Conn
 }
 
-func NewUpdateHandler(mf *MetricFactory, st Store, event *event.Event, cnf *config.Config, lc fx.Lifecycle) *UpdateHandler {
+func NewUpdateHandler(conn *pgx.Conn, mf *MetricFactory, st Store, event *event.Event, cnf *config.Config, lc fx.Lifecycle) *UpdateHandler {
 	uh := UpdateHandler{
 		metricFactory:  mf,
 		store:          st,
 		event:          event,
 		isDirectBackup: cnf.Store.Interval == 0,
+		db:             conn,
 	}
 
 	lc.Append(fx.Hook{
@@ -173,4 +176,15 @@ func isValidMetricType(mType string) bool {
 
 func (h *UpdateHandler) BadRequest(_ echo.Context) error {
 	return &echo.HTTPError{Code: http.StatusBadRequest, Message: ""}
+}
+
+func (h *UpdateHandler) Ping(c echo.Context) error {
+	ctx := context.Background()
+
+	err := h.db.Ping(ctx)
+	if err != nil {
+		return err
+	}
+
+	return c.String(http.StatusOK, "")
 }

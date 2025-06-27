@@ -12,6 +12,7 @@ func main() {
 
 func CreateApp() fx.Option {
 	return fx.Options(
+		bootstrap.Postgress,
 		bootstrap.Config,
 		bootstrap.Server,
 		bootstrap.Route,

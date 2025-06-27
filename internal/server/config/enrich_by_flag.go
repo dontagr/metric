@@ -19,6 +19,7 @@ func (f *FlagEnricher) Process(cnf *Config) error {
 	storeInterval := flagSet.Int("i", 0, "time interval in seconds after which the current server readings are saved to disk")
 	storeFilePath := flagSet.String("f", "", "path to the file where the current values are saved")
 	storeRestore := flagSet.Bool("r", true, "load previously saved values for not for store")
+	databaseDsn := flagSet.String("d", "", "string with the database connection address")
 
 	err := flagSet.Parse(os.Args[1:])
 	if err != nil {
@@ -26,6 +27,10 @@ func (f *FlagEnricher) Process(cnf *Config) error {
 	}
 	if *serverAddrBind != "" {
 		cnf.HTTPServer.BindAddress = *serverAddrBind
+	}
+
+	if *databaseDsn != "" {
+		cnf.DataBase.DatabaseDsn = *databaseDsn
 	}
 
 	_, exists := os.LookupEnv(EnvStoreInterval)

@@ -8,6 +8,11 @@ type Config struct {
 	Log        Logging    `json:"Logging"`
 	HTTPServer HTTPServer `json:"HttpServing"`
 	Store      Store      `json:"Store"`
+	DataBase   DataBase   `json:"DataBase"`
+}
+
+type DataBase struct {
+	DatabaseDsn string `json:"DatabaseDsn" env:"DATABASE_DSN" flag:"d"`
 }
 
 type HTTPServer struct {
