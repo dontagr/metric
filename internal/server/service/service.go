@@ -1,30 +1,65 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
+	"go.uber.org/fx"
 
+	"github.com/dontagr/metric/internal/server/config"
+	"github.com/dontagr/metric/internal/server/service/event"
 	"github.com/dontagr/metric/models"
 )
 
 type UpdateHandler struct {
-	metricFactory *MetricFactory
-	store         Store
+	metricFactory  *MetricFactory
+	store          Store
+	event          *event.Event
+	isDirectBackup bool
 }
 
-func NewUpdateHandler(mf *MetricFactory, st Store) *UpdateHandler {
-	return &UpdateHandler{
-		metricFactory: mf,
-		store:         st,
+func NewUpdateHandler(mf *MetricFactory, st Store, event *event.Event, cnf *config.Config, lc fx.Lifecycle) *UpdateHandler {
+	uh := UpdateHandler{
+		metricFactory:  mf,
+		store:          st,
+		event:          event,
+		isDirectBackup: cnf.Store.Interval == 0,
 	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(_ context.Context) error {
+			if !uh.isDirectBackup {
+				go uh.autoBackUp(cnf.Store.Interval)
+				fmt.Printf("\u001B[032mМетрики бэкапятся каждые %v секунд\u001B[0m\n", cnf.Store.Interval)
+			} else {
+				fmt.Printf("\u001B[032mМетрики бэкапятся при получении\u001B[0m\n")
+			}
+
+			return nil
+		},
+	})
+
+	return &uh
 }
 
 type requestData struct {
-	MType  string `param:"mType"`
-	MName  string `param:"mName"`
-	MValue string `param:"mValue"`
+	MType  string   `param:"mType" json:"type"`
+	MName  string   `param:"mName" json:"id"`
+	MValue string   `param:"mValue"`
+	Delta  *int64   `json:"delta,omitempty"`
+	Value  *float64 `json:"value,omitempty"`
+	Hash   string   `json:"hash,omitempty"`
+}
+
+func (h *UpdateHandler) autoBackUp(interval int) {
+	for {
+		time.Sleep(time.Duration(interval) * time.Second)
+
+		h.event.Metrics <- h.store.ListMetric()
+	}
 }
 
 func (h *UpdateHandler) GetMetric(c echo.Context) error {
@@ -48,8 +83,10 @@ func (h *UpdateHandler) GetMetric(c echo.Context) error {
 		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 
-	logs := fmt.Sprintf("GET %s %s\n", requestData.MName, requestData.MType)
-	fmt.Println(logs)
+	contentType := c.Request().Header.Get(echo.HeaderContentType)
+	if contentType == "application/json" {
+		return c.JSON(200, oldMetric)
+	}
 
 	return c.HTML(200, metricProcessor.ReturnValue(oldMetric))
 }
@@ -69,6 +106,8 @@ func (h *UpdateHandler) GetAllMetric(c echo.Context) error {
 
 	if html != "" {
 		html = "<ul>\n" + html + "</ul>\n"
+	} else {
+		html = "<p>there are no metrics yet</p>"
 	}
 
 	return c.HTML(200, "<!DOCTYPE html>\n<html>\n<body>\n"+html+"</body>\n</html>")
@@ -80,7 +119,6 @@ func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
 	if err != nil {
 		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "Bad request"}
 	}
-
 	if !isValidMetricType(requestData.MType) {
 		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "Invalid type"}
 	}
@@ -90,7 +128,14 @@ func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
 		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 
-	newMetric, err := metricProcessor.ConvertToMetrics(requestData.MName, requestData.MValue)
+	var newMetric *models.Metrics
+	if requestData.Delta != nil {
+		newMetric, err = metricProcessor.GetMetricsByData(requestData.MName, *requestData.Delta)
+	} else if requestData.Value != nil {
+		newMetric, err = metricProcessor.GetMetricsByData(requestData.MName, *requestData.Value)
+	} else {
+		newMetric, err = metricProcessor.ConvertToMetrics(requestData.MName, requestData.MValue)
+	}
 	if err != nil {
 		return &echo.HTTPError{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -102,9 +147,16 @@ func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
 	}
 
 	h.store.SaveMetric(newMetric)
+	if h.isDirectBackup {
+		h.event.Metrics <- h.store.ListMetric()
+	}
+
+	contentType := c.Request().Header.Get(echo.HeaderContentType)
+	if contentType == "application/json" {
+		return c.JSON(200, newMetric)
+	}
 
 	logs := fmt.Sprintf("POST %s %s %s\n", newMetric.ID, newMetric.MType, metricProcessor.ReturnValue(newMetric))
-	fmt.Println(logs)
 
 	return c.HTML(200, logs)
 }

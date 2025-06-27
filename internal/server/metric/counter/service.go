@@ -20,6 +20,19 @@ func (m *Metric) GetName() string {
 	return m.name
 }
 
+func (m *Metric) GetMetricsByData(id string, value any) (*models.Metrics, error) {
+	val, ok := value.(int64)
+	if !ok {
+		return nil, fmt.Errorf("не удается преобразовать значение в int64: %v", value)
+	}
+
+	return &models.Metrics{
+		ID:    id,
+		MType: models.Counter,
+		Delta: &val,
+	}, nil
+}
+
 func (m *Metric) ConvertToMetrics(id string, value string) (*models.Metrics, error) {
 	if id == "" {
 		return nil, fmt.Errorf("id %v is required", id)
