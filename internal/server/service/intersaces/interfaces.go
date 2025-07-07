@@ -8,11 +8,11 @@ import (
 
 type (
 	Store interface {
-		LoadMetric(id string, mType string) *models.Metrics
-		SaveMetric(metrics *models.Metrics)
-		BulkSaveMetric(metrics map[string]*models.Metrics)
-		ListMetric() map[string]*models.Metrics
-		RestoreMetricCollection(collection map[string]*models.Metrics)
+		LoadMetric(id string, mType string) (*models.Metrics, error)
+		SaveMetric(metrics *models.Metrics) error
+		BulkSaveMetric(metrics map[string]*models.Metrics) error
+		ListMetric() (map[string]*models.Metrics, error)
+		RestoreMetricCollection(collection map[string]*models.Metrics) error
 		GetName() string
 		Ping(ctx context.Context) error
 	}

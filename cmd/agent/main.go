@@ -12,6 +12,7 @@ func main() {
 
 func CreateApp() fx.Option {
 	return fx.Options(
+		bootstrap.Logger,
 		bootstrap.Config,
 		bootstrap.Worker,
 		bootstrap.Stats,

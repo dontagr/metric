@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
+	"github.com/dontagr/metric/internal/server/faultTolerance/pgRetry"
 	"github.com/dontagr/metric/models"
 )
 
@@ -40,14 +40,16 @@ const (
 )
 
 type pg struct {
-	dbpool *pgxpool.Pool
+	dbpool *pgRetry.PgxRetry
 	name   string
+	log    *zap.SugaredLogger
 }
 
-func RegisterStorePG(ms *StoreFactory, dbpool *pgxpool.Pool, lc fx.Lifecycle) {
+func RegisterStorePG(log *zap.SugaredLogger, ms *StoreFactory, dbpool *pgRetry.PgxRetry, lc fx.Lifecycle) {
 	pg := pg{
 		dbpool: dbpool,
 		name:   models.StorePg,
+		log:    log,
 	}
 
 	if dbpool != nil {
@@ -67,51 +69,51 @@ func (pg *pg) GetName() string {
 
 func (pg *pg) addShema(ctx context.Context) error {
 	_, err := pg.dbpool.Exec(ctx, createTable)
+
 	return err
 }
 
-func (pg *pg) LoadMetric(id string, mType string) *models.Metrics {
+func (pg *pg) LoadMetric(id string, mType string) (*models.Metrics, error) {
 	var metrics models.Metrics
 
-	err := pg.dbpool.QueryRow(
-		context.Background(),
-		searchSQL,
-		id, mType,
-	).Scan(&metrics.ID, &metrics.MType, &metrics.Delta, &metrics.Value, &metrics.Hash)
+	err := pg.dbpool.QueryRow(context.Background(), searchSQL, id, mType).Scan(
+		&metrics.ID,
+		&metrics.MType,
+		&metrics.Delta,
+		&metrics.Value,
+		&metrics.Hash,
+	)
 	if err != nil {
-		if err != pgx.ErrNoRows {
-			fmt.Printf("Загрузка не удалась для (id: %s, mtype: %s): %v\n", id, mType, err)
-		}
-
-		return &models.Metrics{}
+		return nil, err
 	}
 
-	return &metrics
+	return &metrics, nil
 }
 
-func (pg *pg) SaveMetric(metrics *models.Metrics) {
+func (pg *pg) SaveMetric(metrics *models.Metrics) error {
 	id, mtype, delta, value, hash := pg.unpack(metrics)
 
 	_, err := pg.dbpool.Exec(context.Background(), insertSQL, id, mtype, delta, value, hash)
 	if err != nil {
-		fmt.Printf("Ошибка при сохранении метрики: %v\n", err)
+		return fmt.Errorf("ошибка при сохранении метрики: %w", err)
 	}
+
+	return nil
 }
 
-func (pg *pg) BulkSaveMetric(metrics map[string]*models.Metrics) {
+func (pg *pg) BulkSaveMetric(metrics map[string]*models.Metrics) error {
 	tx, txErr := pg.dbpool.Begin(context.Background())
 	if txErr != nil {
-		fmt.Printf("Ошибка начала транзакции: %v\n", txErr)
-		return
+		return fmt.Errorf("ошибка начала транзакции: %w", txErr)
 	}
 	defer func(txErr *error) {
 		if *txErr != nil {
 			if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
-				fmt.Printf("Ошибка отката транзакции: %v\n", rollbackErr)
+				pg.log.Errorf("ошибка отката транзакции: %v", rollbackErr)
 			}
 		} else {
 			if commitErr := tx.Commit(context.Background()); commitErr != nil {
-				fmt.Printf("Ошибка при коммите транзакции: %v\n", commitErr)
+				pg.log.Errorf("ошибка при коммите транзакции: %v", commitErr)
 			}
 		}
 	}(&txErr)
@@ -129,23 +131,23 @@ func (pg *pg) BulkSaveMetric(metrics map[string]*models.Metrics) {
 	sqlStr := fmt.Sprintf(bulkInsertSQL, strings.Join(valueStrings, ","))
 	_, execErr := tx.Exec(context.Background(), sqlStr, values...)
 	if execErr != nil {
-		fmt.Printf("Ошибка при массовом обновлении метрик: %v\n", execErr)
 		txErr = execErr
-		return
+		return fmt.Errorf("ошибка при массовом обновлении метрик: %w", execErr)
 	}
+
+	return nil
 }
 
 func (pg *pg) unpack(metrics *models.Metrics) (string, string, *int64, *float64, string) {
 	return metrics.ID, metrics.MType, metrics.Delta, metrics.Value, metrics.Hash
 }
 
-func (pg *pg) ListMetric() map[string]*models.Metrics {
+func (pg *pg) ListMetric() (map[string]*models.Metrics, error) {
 	r := make(map[string]*models.Metrics)
 
 	rows, err := pg.dbpool.Query(context.Background(), selectAllSQL)
 	if err != nil {
-		fmt.Printf("Ошибка при извлечении метрик: %v\n", err)
-		return r
+		return r, fmt.Errorf("ошибка при извлечении метрик: %w", err)
 	}
 	defer rows.Close()
 
@@ -153,39 +155,35 @@ func (pg *pg) ListMetric() map[string]*models.Metrics {
 		var metrics models.Metrics
 		err := rows.Scan(&metrics.ID, &metrics.MType, &metrics.Delta, &metrics.Value, &metrics.Hash)
 		if err != nil {
-			fmt.Printf("Ошибка при сканировании метрики: %v\n", err)
-			continue
+			return nil, fmt.Errorf("ошибка при сканировании метрики: %w", err)
 		}
 		r[fmt.Sprintf("%s_%s", metrics.MType, metrics.ID)] = &metrics
 	}
 
-	return r
+	return r, nil
 }
 
-func (pg *pg) RestoreMetricCollection(collection map[string]*models.Metrics) {
+func (pg *pg) RestoreMetricCollection(collection map[string]*models.Metrics) error {
 	tx, txErr := pg.dbpool.Begin(context.Background())
 	if txErr != nil {
-		fmt.Printf("Ошибка начала транзакции: %v\n", txErr)
-		return
+		return fmt.Errorf("ошибка начала транзакции: %w", txErr)
 	}
-	defer func(txErr *error, count int) {
+	defer func(txErr *error) {
 		if *txErr != nil {
 			if rollbackErr := tx.Rollback(context.Background()); rollbackErr != nil {
-				fmt.Printf("Ошибка отката транзакции: %v\n", rollbackErr)
+				pg.log.Errorf("ошибка отката транзакции: %v", rollbackErr)
 			}
 		} else {
 			if commitErr := tx.Commit(context.Background()); commitErr != nil {
-				fmt.Printf("Ошибка при коммите транзакции: %v\n", commitErr)
+				pg.log.Errorf("ошибка при коммите транзакции: %v", commitErr)
 			}
-			fmt.Printf("\u001B[032mДанные в базе востановлены, всего метрик: %d\u001B[0m\n", count)
 		}
-	}(&txErr, len(collection))
+	}(&txErr)
 
 	_, execErr := tx.Exec(context.Background(), truncateSQL)
 	if execErr != nil {
-		fmt.Printf("Ошибка при восстановлении метрики: %v\n", execErr)
 		txErr = execErr
-		return
+		return fmt.Errorf("ошибка при восстановлении метрики: %w", execErr)
 	}
 
 	values := make([]interface{}, 0, len(collection)*5)
@@ -201,10 +199,11 @@ func (pg *pg) RestoreMetricCollection(collection map[string]*models.Metrics) {
 	sqlStr := fmt.Sprintf(bulkInsertSQL, strings.Join(valueStrings, ","))
 	_, execErr = tx.Exec(context.Background(), sqlStr, values...)
 	if execErr != nil {
-		fmt.Printf("Ошибка при восстановлении метрик: %v\n", execErr)
 		txErr = execErr
-		return
+		return fmt.Errorf("ошибка при восстановлении метрик: %w", execErr)
 	}
+
+	return nil
 }
 
 func (pg *pg) Ping(ctx context.Context) error {

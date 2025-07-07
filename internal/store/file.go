@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/server/config"
 	"github.com/dontagr/metric/internal/server/service/event"
@@ -15,12 +16,14 @@ import (
 type Filer struct {
 	filename string
 	perm     uint32
+	log      *zap.SugaredLogger
 }
 
-func NewFiler(cfg *config.Config, event *event.Event, lc fx.Lifecycle) *Filer {
+func NewFiler(log *zap.SugaredLogger, cfg *config.Config, event *event.Event, lc fx.Lifecycle) *Filer {
 	w := Filer{
 		filename: cfg.Store.FilePath + cfg.Store.FileName,
 		perm:     cfg.Store.FilePerm,
+		log:      log,
 	}
 
 	lc.Append(fx.Hook{
@@ -34,31 +37,34 @@ func NewFiler(cfg *config.Config, event *event.Event, lc fx.Lifecycle) *Filer {
 	return &w
 }
 
-func (w *Filer) save(data interface{}) {
+func (w *Filer) save(data interface{}) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		fmt.Printf("Filer: Ошибка сериализации ListMetric в JSON: %v\n", err)
-		return
+		return fmt.Errorf("filer: ошибка сериализации ListMetric в JSON: %w", err)
 	}
 
 	err = os.WriteFile(w.filename, jsonData, os.FileMode(w.perm))
 	if err != nil {
-		fmt.Printf("Filer: Ошибка записи по адресу: %v\n", w.filename)
-		return
+		return fmt.Errorf("filer: ошибка записи по адресу: %v", w.filename)
 	}
 
-	fmt.Printf("Запись бэкапа успешна: %v\n", w.filename)
+	w.log.Infof("запись бэкапа успешна. file: %v", w.filename)
+
+	return nil
 }
 
 func (w *Filer) consumer(event <-chan interface{}) {
 	for {
 		data, ok := <-event
 		if !ok {
-			fmt.Println("Канал был закрыт. Завершение консьюмера.")
+			w.log.Info("канал был закрыт. Завершение консьюмера.")
 			return
 		}
 
-		w.save(data)
+		err := w.save(data)
+		if err != nil {
+			w.log.Error(err)
+		}
 	}
 }
 

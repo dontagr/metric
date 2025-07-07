@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/agent/config"
 	"github.com/dontagr/metric/internal/agent/converter"
@@ -21,12 +22,14 @@ import (
 type Sender struct {
 	cfg   *config.Config
 	stats *service.Stats
+	log   *zap.SugaredLogger
 }
 
-func NewSender(cfg *config.Config, stats *service.Stats, lc fx.Lifecycle) *Sender {
+func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle) *Sender {
 	s := &Sender{
 		cfg:   cfg,
 		stats: stats,
+		log:   log,
 	}
 
 	lc.Append(fx.Hook{
@@ -45,13 +48,13 @@ func (s *Sender) Handle() {
 	url := fmt.Sprintf("http://%s/updates/", s.cfg.HTTPBindAddress)
 	for {
 		time.Sleep(time.Duration(s.cfg.ReportInterval) * time.Second)
-		fmt.Printf("sender run with %v\n", s.stats.PollCount)
+		s.log.Infof("sender run with PollCount: %v", s.stats.PollCount)
 
 		metrics := make([]*models.Metrics, 0, len(EnableStats))
 		for index, mType := range EnableStats {
 			metric, err := s.getMetric(mType, index)
 			if err != nil {
-				fmt.Printf("Error get metrics for index %s: %v\n", index, err)
+				s.log.Errorf("get metrics for index %s: %v", index, err)
 				continue
 			}
 
@@ -60,19 +63,19 @@ func (s *Sender) Handle() {
 
 		body, err := s.getBody(metrics)
 		if err != nil {
-			fmt.Printf("Error get body: %v\n", err)
+			s.log.Errorf("get body: %v", err)
 			continue
 		}
 
 		compressedBody, err := s.compress(body)
 		if err != nil {
-			fmt.Printf("Error with compress: %v\n", err)
+			s.log.Errorf("compress: %v", err)
 			continue
 		}
 
 		req, err := http.NewRequest("POST", url, compressedBody)
 		if err != nil {
-			fmt.Printf("Error creating request: %v\n", err)
+			s.log.Errorf("creating request: %v", err)
 			continue
 		}
 
@@ -81,12 +84,12 @@ func (s *Sender) Handle() {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Printf("Error sending data: %v\n", err)
+			s.log.Errorf("sending data: %v", err)
 			continue
 		}
 		err = resp.Body.Close()
 		if err != nil {
-			fmt.Printf("Error closing response body: %v\n", err)
+			s.log.Errorf("closing response body: %v", err)
 			continue
 		}
 	}
@@ -98,16 +101,16 @@ func (s *Sender) compress(body *bytes.Buffer) (*bytes.Buffer, error) {
 	defer func(gzipWriter *gzip.Writer) {
 		err := gzipWriter.Close()
 		if err != nil {
-			fmt.Printf("Error with gzipWriter.Close: %v\n", err)
+			s.log.Errorf("gzipWriter.Close: %v", err)
 		}
 	}(gzipWriter)
 
 	_, err := gzipWriter.Write(body.Bytes())
 	if err != nil {
-		return nil, fmt.Errorf("error compressing data: %v", err)
+		return nil, fmt.Errorf("error compressing data: %w", err)
 	}
 	if err := gzipWriter.Close(); err != nil {
-		return nil, fmt.Errorf("error closing Gzip writer: %v", err)
+		return nil, fmt.Errorf("error closing Gzip writer: %w", err)
 	}
 
 	return &compressedBody, nil
@@ -118,7 +121,7 @@ func (s *Sender) getMetric(mType string, index string) (*models.Metrics, error) 
 
 	model, err := s.getModel(mType, index, val)
 	if err != nil {
-		return nil, fmt.Errorf("error creating model for %s: %v", mType, err)
+		return nil, fmt.Errorf("error creating model for %s: %w", mType, err)
 	}
 
 	return model, nil
@@ -127,7 +130,7 @@ func (s *Sender) getMetric(mType string, index string) (*models.Metrics, error) 
 func (s *Sender) getBody(body []*models.Metrics) (*bytes.Buffer, error) {
 	modelJSON, err := json.Marshal(body)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling body: %v", err)
+		return nil, fmt.Errorf("error marshaling body: %w", err)
 	}
 
 	return bytes.NewBuffer(modelJSON), nil

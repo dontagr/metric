@@ -2,9 +2,9 @@ package bootstrap
 
 import (
 	"context"
-	"fmt"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/server/config"
 	"github.com/dontagr/metric/internal/server/service"
@@ -21,7 +21,7 @@ var Route = fx.Options(
 	),
 )
 
-func newUpdateHandler(mf *service.MetricFactory, sf *store.StoreFactory, event *event.Event, cnf *config.Config, lc fx.Lifecycle) (*service.UpdateHandler, error) {
+func newUpdateHandler(log *zap.SugaredLogger, mf *service.MetricFactory, sf *store.StoreFactory, event *event.Event, cnf *config.Config, lc fx.Lifecycle) (*service.UpdateHandler, error) {
 	var storeName string
 	if cnf.DataBase.Init {
 		storeName = models.StorePg
@@ -44,10 +44,10 @@ func newUpdateHandler(mf *service.MetricFactory, sf *store.StoreFactory, event *
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
 			if !uh.IsDirectBackup {
-				go uh.AutoBackUp(cnf.Store.Interval)
-				fmt.Printf("\u001B[032mМетрики бэкапятся каждые %v секунд\u001B[0m\n", cnf.Store.Interval)
+				go uh.AutoBackUp(cnf.Store.Interval, log)
+				log.Infof("Метрики бэкапятся каждые %v секунд", cnf.Store.Interval)
 			} else {
-				fmt.Printf("\u001B[032mМетрики бэкапятся при получении\u001B[0m\n")
+				log.Info("Метрики бэкапятся при получении")
 			}
 
 			return nil

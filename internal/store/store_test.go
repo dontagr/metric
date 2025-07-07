@@ -37,7 +37,10 @@ func TestMemStorage_SaveMetric(t *testing.T) {
 			m := &MemStorage{
 				collection: tt.fields.collection,
 			}
-			m.SaveMetric(tt.args.metrics)
+			err := m.SaveMetric(tt.args.metrics)
+			if err != nil {
+				return
+			}
 			assert.Equal(t, m.collection, tt.want.collection)
 		})
 	}
@@ -77,7 +80,7 @@ func TestMemStorage_LoadMetric(t *testing.T) {
 			m := &MemStorage{
 				collection: tt.fields.collection,
 			}
-			if got := m.LoadMetric(tt.args.id, tt.args.mType); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := m.LoadMetric(tt.args.id, tt.args.mType); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("LoadMetric() = %v, want %v", got, tt.want)
 			}
 		})

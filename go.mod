@@ -3,6 +3,7 @@ module github.com/dontagr/metric
 go 1.23.4
 
 require (
+	github.com/cenkalti/backoff/v5 v5.0.2
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0

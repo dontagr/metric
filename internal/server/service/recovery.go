@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/server/config"
 	"github.com/dontagr/metric/internal/server/service/intersaces"
@@ -17,9 +18,10 @@ type Recovery struct {
 	store       intersaces.Store
 	filer       *store.Filer
 	autoRestore bool
+	log         *zap.SugaredLogger
 }
 
-func NewRecovery(sf *store.StoreFactory, filer *store.Filer, cfg *config.Config, lc fx.Lifecycle) (*Recovery, error) {
+func NewRecovery(log *zap.SugaredLogger, sf *store.StoreFactory, filer *store.Filer, cfg *config.Config, lc fx.Lifecycle) (*Recovery, error) {
 	var storeName string
 	if cfg.DataBase.Init {
 		storeName = models.StorePg
@@ -36,10 +38,14 @@ func NewRecovery(sf *store.StoreFactory, filer *store.Filer, cfg *config.Config,
 		store:       storage,
 		filer:       filer,
 		autoRestore: cfg.Store.Restore,
+		log:         log,
 	}
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			r.ResetStoreData()
+			err := r.ResetStoreData()
+			if err != nil {
+				log.Error(err)
+			}
 
 			return nil
 		},
@@ -47,23 +53,28 @@ func NewRecovery(sf *store.StoreFactory, filer *store.Filer, cfg *config.Config,
 	return &r, nil
 }
 
-func (r *Recovery) ResetStoreData() {
+func (r *Recovery) ResetStoreData() error {
 	if !r.autoRestore {
-		return
+		return nil
 	}
 
 	data, err := r.filer.Read()
 	if err != nil {
-		fmt.Printf("Ошибка при восстановлении хранилища: %v\n", err)
-		return
+		return fmt.Errorf("ошибка при восстановлении хранилища: %w", err)
 	}
 
 	var collection map[string]*models.Metrics
 	err = json.Unmarshal(data, &collection)
 	if err != nil {
-		fmt.Printf("Ошибка при десериализации данных из JSON: %v\n", err)
-		return
+		return fmt.Errorf("ошибка при десериализации данных из JSON: %w", err)
 	}
 
-	r.store.RestoreMetricCollection(collection)
+	err = r.store.RestoreMetricCollection(collection)
+	if err != nil {
+		return fmt.Errorf("ошибка при записи в хранилище: %w", err)
+	}
+
+	r.log.Infof("данные хранилища востановлены, всего метрик: %d", len(collection))
+
+	return nil
 }

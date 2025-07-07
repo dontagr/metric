@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 
 	"github.com/dontagr/metric/internal/server/service/event"
@@ -41,9 +43,11 @@ func (h *UpdateHandler) GetMetric(c echo.Context) error {
 		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "Invalid type"}
 	}
 
-	oldMetric := h.Store.LoadMetric(requestMetric.MName, requestMetric.MType)
-	if oldMetric.ID == "" {
+	oldMetric, err := h.Store.LoadMetric(requestMetric.MName, requestMetric.MType)
+	if errors.Is(err, pgx.ErrNoRows) {
 		return &echo.HTTPError{Code: http.StatusNotFound, Message: "Not found"}
+	} else if err != nil {
+		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: fmt.Sprintf("загрузка не удалась для (id: %s, mtype: %s): %v", requestMetric.MName, requestMetric.MType, err)}
 	}
 
 	metricProcessor, err := h.MetricFactory.GetMetric(requestMetric.MType)
@@ -60,7 +64,10 @@ func (h *UpdateHandler) GetMetric(c echo.Context) error {
 }
 
 func (h *UpdateHandler) GetAllMetric(c echo.Context) error {
-	collection := h.Store.ListMetric()
+	collection, err := h.Store.ListMetric()
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
 
 	html := ""
 	for _, metrics := range collection {
@@ -105,9 +112,16 @@ func (h *UpdateHandler) UpdatesMetric(c echo.Context) error {
 		metrics[key] = newMetric
 	}
 
-	h.Store.BulkSaveMetric(metrics)
+	err = h.Store.BulkSaveMetric(metrics)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
 	if h.IsDirectBackup {
-		h.Event.Metrics <- h.Store.ListMetric()
+		metric, err := h.Store.ListMetric()
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return c.JSON(http.StatusInternalServerError, err.Error())
+		}
+		h.Event.Metrics <- metric
 	}
 
 	return c.JSON(200, metrics)
@@ -125,9 +139,16 @@ func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
 		return echoError
 	}
 
-	h.Store.SaveMetric(newMetric)
+	err = h.Store.SaveMetric(newMetric)
+	if err != nil {
+		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
 	if h.IsDirectBackup {
-		h.Event.Metrics <- h.Store.ListMetric()
+		metric, err := h.Store.ListMetric()
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
+		}
+		h.Event.Metrics <- metric
 	}
 
 	contentType := c.Request().Header.Get(echo.HeaderContentType)

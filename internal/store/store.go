@@ -27,33 +27,37 @@ func (m *MemStorage) GetName() string {
 	return m.name
 }
 
-func (m *MemStorage) LoadMetric(id string, mType string) *models.Metrics {
+func (m *MemStorage) LoadMetric(id string, mType string) (*models.Metrics, error) {
 	metrics, ok := m.collection[fmt.Sprintf("%s_%s", mType, id)]
 	if !ok {
-		return &models.Metrics{}
+		return &models.Metrics{}, nil
 	}
 
-	return metrics
+	return metrics, nil
 }
 
-func (m *MemStorage) SaveMetric(metrics *models.Metrics) {
+func (m *MemStorage) SaveMetric(metrics *models.Metrics) error {
 	m.collection[fmt.Sprintf("%s_%s", metrics.MType, metrics.ID)] = metrics
+
+	return nil
 }
 
-func (m *MemStorage) BulkSaveMetric(metrics map[string]*models.Metrics) {
+func (m *MemStorage) BulkSaveMetric(metrics map[string]*models.Metrics) error {
 	for _, metric := range metrics {
 		m.collection[fmt.Sprintf("%s_%s", metric.MType, metric.ID)] = metric
 	}
+
+	return nil
 }
 
-func (m *MemStorage) ListMetric() map[string]*models.Metrics {
-	return m.collection
+func (m *MemStorage) ListMetric() (map[string]*models.Metrics, error) {
+	return m.collection, nil
 }
 
-func (m *MemStorage) RestoreMetricCollection(collection map[string]*models.Metrics) {
+func (m *MemStorage) RestoreMetricCollection(collection map[string]*models.Metrics) error {
 	m.collection = collection
 
-	fmt.Printf("\u001B[032mДанные хранилища востановлены, всего метрик: %d\u001B[0m\n", len(collection))
+	return nil
 }
 
 func (m *MemStorage) Ping(_ context.Context) error {
