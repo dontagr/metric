@@ -2,10 +2,10 @@ package worker
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/agent/config"
 	"github.com/dontagr/metric/internal/agent/service"
@@ -14,12 +14,14 @@ import (
 type Refresher struct {
 	cfg   *config.Config
 	stats *service.Stats
+	log   *zap.SugaredLogger
 }
 
-func NewRefresher(cfg *config.Config, stats *service.Stats, lc fx.Lifecycle) *Refresher {
+func NewRefresher(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle) *Refresher {
 	r := &Refresher{
 		cfg:   cfg,
 		stats: stats,
+		log:   log,
 	}
 
 	lc.Append(fx.Hook{
@@ -35,7 +37,7 @@ func NewRefresher(cfg *config.Config, stats *service.Stats, lc fx.Lifecycle) *Re
 
 func (s *Refresher) Handle() {
 	for {
-		fmt.Println("Refresher run")
+		s.log.Debug("refresher run")
 		s.stats.Update()
 
 		time.Sleep(time.Duration(s.cfg.PollInterval) * time.Second)

@@ -1,5 +1,8 @@
 {
   "PollInterval": 2,
   "ReportInterval": 10,
-  "HTTPBindAddress": "localhost:8080"
+  "HTTPBindAddress": "localhost:8080",
+  "Logging": {
+    "LogLevel": "INFO"
+  }
 }

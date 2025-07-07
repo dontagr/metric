@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -49,12 +50,14 @@ func (cnf *Config) ReadFromEnv() error {
 func (cnf *Config) ReadFromFile() {
 	for _, file := range cnf.getConfigFile() {
 		absPath, _ := filepath.Abs(file)
-		fmt.Printf("Read config from path: %s\n", absPath)
 		err := cleanenv.ReadConfig(absPath, cnf.Data)
 		if err != nil {
-			fmt.Println(err)
+			err2 := errors.Unwrap(err)
+			if err2 == nil || err2.Error() != "no such file or directory" {
+				fmt.Printf("Reading config was failed from: %v with err: %v\n", absPath, err)
+			}
 		} else {
-			fmt.Println("Reading was successful")
+			fmt.Printf("Reading config was successful from: %v\n", absPath)
 		}
 	}
 }
