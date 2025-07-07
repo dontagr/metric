@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/dontagr/metric/models"
 )
 
@@ -30,7 +32,7 @@ func (m *MemStorage) GetName() string {
 func (m *MemStorage) LoadMetric(id string, mType string) (*models.Metrics, error) {
 	metrics, ok := m.collection[fmt.Sprintf("%s_%s", mType, id)]
 	if !ok {
-		return &models.Metrics{}, nil
+		return &models.Metrics{}, pgx.ErrNoRows
 	}
 
 	return metrics, nil
