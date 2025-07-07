@@ -70,10 +70,10 @@ func (pgr *PgxRetry) Exec(ctx context.Context, sql string, arguments ...interfac
 func (pgr *PgxRetry) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
 	row := pgr.dbpool.QueryRow(ctx, sql, args...)
 
-	err := row.Scan(nil)
-	if err != err {
-		fmt.Println("ошибка")
-	}
+	//err := row.Scan(nil)
+	//if err != err {
+	//	fmt.Println("ошибка")
+	//}
 
 	return row
 }
