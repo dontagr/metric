@@ -56,7 +56,7 @@ func (cnf *Config) ReadFromFile() {
 			if err2 == nil || err2.Error() != "no such file or directory" {
 				fmt.Printf("Reading config was failed from: %v with err: %v\n", absPath, err)
 			}
-		} else if err == nil {
+		} else {
 			fmt.Printf("Reading config was successful from: %v\n", absPath)
 		}
 	}

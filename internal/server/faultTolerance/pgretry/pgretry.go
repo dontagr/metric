@@ -1,4 +1,4 @@
-package pgRetry
+package pgretry
 
 import (
 	"context"
@@ -21,6 +21,10 @@ type PgxRetry struct {
 }
 
 func NewPgxRetry(conn *pgxpool.Pool, log *zap.SugaredLogger) *PgxRetry {
+	if conn == nil {
+		return nil
+	}
+
 	return &PgxRetry{
 		dbpool:   conn,
 		duration: []int{0, 1, 3, 5},

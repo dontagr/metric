@@ -8,13 +8,13 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/server/config"
-	"github.com/dontagr/metric/internal/server/faultTolerance/pgRetry"
+	"github.com/dontagr/metric/internal/server/faultTolerance/pgretry"
 )
 
 var Postgress = fx.Options(
 	fx.Provide(
 		newPostgresConnect,
-		pgRetry.NewPgxRetry,
+		pgretry.NewPgxRetry,
 	),
 )
 
