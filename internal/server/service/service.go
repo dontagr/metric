@@ -64,13 +64,8 @@ func (h *UpdateHandler) processUpdateData(requestData *requestMetric, oldMetric 
 		newMetric.Hash = *requestData.Hash
 	}
 
-	fmt.Println("=======")
-	fmt.Println(h.Key)
-	fmt.Println("=======")
-
 	if h.Key != "" {
 		computedHash, err := h.computeHash(newMetric)
-		fmt.Println(computedHash)
 		if err != nil {
 			return nil, &echo.HTTPError{Code: http.StatusInternalServerError, Message: "Ошибка вычисления хеша"}
 		}
