@@ -1,6 +1,9 @@
 package service
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -57,6 +60,25 @@ func (h *UpdateHandler) processUpdateData(requestData *requestMetric, oldMetric 
 	if err != nil {
 		return nil, &echo.HTTPError{Code: http.StatusBadRequest, Message: err.Error()}
 	}
+	if requestData.Hash != nil {
+		newMetric.Hash = *requestData.Hash
+	}
+
+	fmt.Println("=======")
+	fmt.Println(h.Key)
+	fmt.Println("=======")
+
+	if h.Key != "" {
+		computedHash, err := h.computeHash(newMetric)
+		fmt.Println(computedHash)
+		if err != nil {
+			return nil, &echo.HTTPError{Code: http.StatusInternalServerError, Message: "Ошибка вычисления хеша"}
+		}
+
+		if requestData.Hash != nil && computedHash != *requestData.Hash {
+			return nil, &echo.HTTPError{Code: http.StatusBadRequest, Message: "Хеш не совпадает"}
+		}
+	}
 
 	if oldMetric == nil {
 		oldMetric, err = h.Store.LoadMetric(requestData.MName, requestData.MType)
@@ -70,5 +92,31 @@ func (h *UpdateHandler) processUpdateData(requestData *requestMetric, oldMetric 
 		return nil, &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 
+	if h.Key != "" {
+		computedHash, err := h.computeHash(newMetric)
+		if err != nil {
+			return nil, &echo.HTTPError{Code: http.StatusInternalServerError, Message: "Ошибка вычисления хеша"}
+		}
+
+		newMetric.Hash = computedHash
+	}
+
 	return newMetric, nil
+}
+
+func (h *UpdateHandler) computeHash(metric *models.Metrics) (string, error) {
+	hmacHasher := hmac.New(sha256.New, []byte(h.Key))
+
+	hmacHasher.Write([]byte(metric.ID))
+	hmacHasher.Write([]byte(metric.MType))
+	if metric.Delta != nil {
+		hmacHasher.Write([]byte(fmt.Sprintf("%d", *metric.Delta)))
+	}
+	if metric.Value != nil {
+		hmacHasher.Write([]byte(fmt.Sprintf("%f", *metric.Value)))
+	}
+
+	hash := hex.EncodeToString(hmacHasher.Sum(nil))
+
+	return hash, nil
 }

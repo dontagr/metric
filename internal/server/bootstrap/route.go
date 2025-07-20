@@ -39,6 +39,7 @@ func newUpdateHandler(log *zap.SugaredLogger, mf *service.MetricFactory, sf *sto
 		Store:          storage,
 		Event:          event,
 		IsDirectBackup: cnf.Store.Interval == 0,
+		Key:            cnf.Security.Key,
 	}
 
 	lc.Append(fx.Hook{

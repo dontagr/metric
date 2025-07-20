@@ -19,6 +19,7 @@ type UpdateHandler struct {
 	Store          intersaces.Store
 	Event          *event.Event
 	IsDirectBackup bool
+	Key            string
 }
 
 type requestArrayMetric []requestMetric
@@ -29,7 +30,7 @@ type requestMetric struct {
 	MValue string   `param:"mValue"`
 	Delta  *int64   `json:"delta,omitempty"`
 	Value  *float64 `json:"value,omitempty"`
-	Hash   string   `json:"hash,omitempty"`
+	Hash   *string  `json:"hash,omitempty"`
 }
 
 func (h *UpdateHandler) GetMetric(c echo.Context) error {
@@ -53,6 +54,10 @@ func (h *UpdateHandler) GetMetric(c echo.Context) error {
 	metricProcessor, err := h.MetricFactory.GetMetric(requestMetric.MType)
 	if err != nil {
 		return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
+	}
+
+	if h.Key != "" {
+		c.Response().Header().Set("HashSHA256", oldMetric.Hash)
 	}
 
 	contentType := c.Request().Header.Get(echo.HeaderContentType)
@@ -89,6 +94,16 @@ func (h *UpdateHandler) GetAllMetric(c echo.Context) error {
 }
 
 func (h *UpdateHandler) UpdatesMetric(c echo.Context) error {
+	//bodyBytes, err1 := ioutil.ReadAll(c.Request().Body)
+	//if err1 != nil {
+	//	return &echo.HTTPError{Code: http.StatusInternalServerError, Message: "Ошибка чтения тела запроса"}
+	//}
+	//// Вывод прочитанных данных в лог (для отладки)
+	//fmt.Println("Прочитанное тело запроса:", string(bodyBytes))
+	//
+	//// Сбрасываем ридер до начала, чтобы последующий вызов c.Bind мог снова прочитать данные.
+	//c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+
 	var requestArrayMetric requestArrayMetric
 	err := c.Bind(&requestArrayMetric)
 	if err != nil {
@@ -128,6 +143,16 @@ func (h *UpdateHandler) UpdatesMetric(c echo.Context) error {
 }
 
 func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
+	//bodyBytes, err1 := ioutil.ReadAll(c.Request().Body)
+	//if err1 != nil {
+	//	return &echo.HTTPError{Code: http.StatusInternalServerError, Message: "Ошибка чтения тела запроса"}
+	//}
+	//// Вывод прочитанных данных в лог (для отладки)
+	//fmt.Println("Прочитанное тело запроса:", string(bodyBytes))
+	//
+	//// Сбрасываем ридер до начала, чтобы последующий вызов c.Bind мог снова прочитать данные.
+	//c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+
 	var requestMetric requestMetric
 	err := c.Bind(&requestMetric)
 	if err != nil {

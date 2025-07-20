@@ -13,5 +13,8 @@
   },
   "DataBase": {
     "DatabaseDsn": "postgres://postgres:postgres@localhost:5432/metrics"
+  },
+  "Security": {
+    "Key": "test"
   }
 }

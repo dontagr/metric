@@ -4,12 +4,18 @@ const EnvStoreInterval = "STORE_INTERVAL"
 const EnvFileStoragePath = "FILE_STORAGE_PATH"
 const EnvRestore = "RESTORE"
 const DatabaseDsn = "DATABASE_DSN"
+const KEY = "KEY"
 
 type Config struct {
 	Log        Logging    `json:"Logging"`
 	HTTPServer HTTPServer `json:"HttpServing"`
 	Store      Store      `json:"Store"`
 	DataBase   DataBase   `json:"DataBase"`
+	Security   Security   `json:"Security"`
+}
+
+type Security struct {
+	Key string `json:"Key" env:"KEY"`
 }
 
 type DataBase struct {
