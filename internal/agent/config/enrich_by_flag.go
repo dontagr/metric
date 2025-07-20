@@ -18,6 +18,8 @@ func (f *FlagEnricher) Process(cnf *Config) error {
 	serverAddrBind := flagSet.String("a", "", "bind addr http")
 	reportInterval := flagSet.Int("r", 0, "report interval value in sec")
 	pollInterval := flagSet.Int("p", 0, "poll interval value in sec")
+	key := flagSet.String("k", "", "key for encode with SHA256")
+
 	err := flagSet.Parse(os.Args[1:])
 	if err != nil {
 		return err
@@ -30,6 +32,10 @@ func (f *FlagEnricher) Process(cnf *Config) error {
 	}
 	if *serverAddrBind != "" {
 		cnf.HTTPBindAddress = *serverAddrBind
+	}
+
+	if *key != "" {
+		cnf.Security.Key = *key
 	}
 
 	return nil

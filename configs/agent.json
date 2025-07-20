@@ -4,5 +4,8 @@
   "HTTPBindAddress": "localhost:8080",
   "Logging": {
     "LogLevel": "INFO"
+  },
+  "Security": {
+    "Key": "test"
   }
 }
