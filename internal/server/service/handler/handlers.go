@@ -24,9 +24,9 @@ func (h *UpdateHandler) GetMetric(c echo.Context) error {
 		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "Bad request"}
 	}
 
-	oldMetric, err := h.Service.GetMetric(requestMetric)
-	if err != nil {
-		return err
+	oldMetric, errEcho := h.Service.GetMetric(requestMetric)
+	if errEcho != nil {
+		return errEcho
 	}
 
 	contentType := c.Request().Header.Get(echo.HeaderContentType)
@@ -38,9 +38,9 @@ func (h *UpdateHandler) GetMetric(c echo.Context) error {
 		return c.JSON(http.StatusOK, oldMetric)
 	}
 
-	value, err := h.Service.GetStringValue(oldMetric)
-	if err != nil {
-		return err
+	value, errEcho := h.Service.GetStringValue(oldMetric)
+	if errEcho != nil {
+		return errEcho
 	}
 	if h.HashKey != "" {
 		c.Response().Header().Set(models.HashAlgKey, hash.StringHash(h.HashKey, value))
@@ -50,9 +50,9 @@ func (h *UpdateHandler) GetMetric(c echo.Context) error {
 }
 
 func (h *UpdateHandler) GetAllMetric(c echo.Context) error {
-	html, err := h.Service.GetAllMetricHTML()
-	if err != nil {
-		return err
+	html, errEcho := h.Service.GetAllMetricHTML()
+	if errEcho != nil {
+		return errEcho
 	}
 
 	return c.HTML(http.StatusOK, html)
@@ -100,9 +100,9 @@ func (h *UpdateHandler) BadRequest(_ echo.Context) error {
 func (h *UpdateHandler) Ping(c echo.Context) error {
 	ctx := context.Background()
 
-	err := h.Service.Ping(ctx)
-	if err != nil {
-		return err
+	errEcho := h.Service.Ping(ctx)
+	if errEcho != nil {
+		return errEcho
 	}
 
 	return c.String(http.StatusOK, "")

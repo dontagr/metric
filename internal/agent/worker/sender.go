@@ -131,12 +131,7 @@ func (s *Sender) getMetric(mType string, index string) (*models.Metrics, error) 
 	}
 
 	if s.cfg.Security.Key != "" {
-		computedHash, err := hash.ComputeHash(s.cfg.Security.Key, model)
-		if err != nil {
-			return nil, fmt.Errorf("ошибка вычисления хеша")
-		}
-
-		model.Hash = computedHash
+		model.Hash = hash.ComputeHash(s.cfg.Security.Key, model)
 	}
 
 	return model, nil
