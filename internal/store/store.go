@@ -56,7 +56,7 @@ func (m *MemStorage) ListMetric() (map[string]*models.Metrics, error) {
 	return m.collection, nil
 }
 
-func (m *MemStorage) RestoreMetricCollection(collection map[string]*models.Metrics) error {
+func (m *MemStorage) RestoreMetricCollection(_ context.Context, collection map[string]*models.Metrics) error {
 	m.collection = collection
 
 	return nil

@@ -163,8 +163,8 @@ func (pg *pg) ListMetric() (map[string]*models.Metrics, error) {
 	return r, nil
 }
 
-func (pg *pg) RestoreMetricCollection(collection map[string]*models.Metrics) error {
-	tx, txErr := pg.dbpool.Begin(context.Background())
+func (pg *pg) RestoreMetricCollection(ctx context.Context, collection map[string]*models.Metrics) error {
+	tx, txErr := pg.dbpool.Begin(ctx)
 	if txErr != nil {
 		return fmt.Errorf("ошибка начала транзакции: %w", txErr)
 	}

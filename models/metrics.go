@@ -1,10 +1,11 @@
 package models
 
 const (
-	Counter  = "counter"
-	Gauge    = "gauge"
-	StoreMem = "memory"
-	StorePg  = "postgress"
+	Counter    = "counter"
+	Gauge      = "gauge"
+	StoreMem   = "memory"
+	StorePg    = "postgres"
+	HashAlgKey = "HashSHA256"
 )
 
 // NOTE: Не усложняем пример, вводя иерархическую вложенность структур.

@@ -15,7 +15,7 @@ type Config struct {
 }
 
 type Security struct {
-	Key string `json:"Key" env:"KEY"`
+	Key string `json:"HashKey" env:"KEY"`
 }
 
 type DataBase struct {

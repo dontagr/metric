@@ -46,7 +46,6 @@ func (pgr *PgxRetry) Exec(ctx context.Context, sql string, arguments ...interfac
 			if errors.As(err, &connectErr) {
 				log.Debugf("ошибка подключения к базе; Пробуем еще раз, прошло времени: %v сек, итерация %v", duration.Seconds(), iter)
 
-				iter++
 				return tag, backoff.RetryAfter(pgr.duration[iter])
 			}
 
@@ -69,11 +68,6 @@ func (pgr *PgxRetry) Exec(ctx context.Context, sql string, arguments ...interfac
 
 func (pgr *PgxRetry) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
 	row := pgr.dbpool.QueryRow(ctx, sql, args...)
-
-	//err := row.Scan(nil)
-	//if err != err {
-	//	fmt.Println("ошибка")
-	//}
 
 	return row
 }
