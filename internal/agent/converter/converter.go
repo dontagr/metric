@@ -1,11 +1,11 @@
-package helper
+package converter
 
 import (
 	"fmt"
 	"reflect"
 )
 
-func ConvertReflectValueToInt64(val reflect.Value) (int64, error) {
+func ReflectValueToInt64(val reflect.Value) (int64, error) {
 	underlyingValue := val.Interface()
 
 	switch v := underlyingValue.(type) {
@@ -18,7 +18,7 @@ func ConvertReflectValueToInt64(val reflect.Value) (int64, error) {
 	}
 }
 
-func ConvertReflectValueToFloat64(val reflect.Value) (float64, error) {
+func ReflectValueToFloat64(val reflect.Value) (float64, error) {
 	underlyingValue := val.Interface()
 
 	switch v := underlyingValue.(type) {

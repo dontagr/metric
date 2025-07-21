@@ -11,9 +11,10 @@ import (
 	"time"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/agent/config"
-	"github.com/dontagr/metric/internal/agent/helper"
+	"github.com/dontagr/metric/internal/agent/converter"
 	"github.com/dontagr/metric/internal/agent/service"
 	"github.com/dontagr/metric/models"
 )
@@ -21,12 +22,14 @@ import (
 type Sender struct {
 	cfg   *config.Config
 	stats *service.Stats
+	log   *zap.SugaredLogger
 }
 
-func NewSender(cfg *config.Config, stats *service.Stats, lc fx.Lifecycle) *Sender {
+func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle) *Sender {
 	s := &Sender{
 		cfg:   cfg,
 		stats: stats,
+		log:   log,
 	}
 
 	lc.Append(fx.Hook{
@@ -42,42 +45,52 @@ func NewSender(cfg *config.Config, stats *service.Stats, lc fx.Lifecycle) *Sende
 
 func (s *Sender) Handle() {
 	client := &http.Client{}
-	url := fmt.Sprintf("http://%s/update/", s.cfg.HTTPBindAddress)
+	url := fmt.Sprintf("http://%s/updates/", s.cfg.HTTPBindAddress)
 	for {
 		time.Sleep(time.Duration(s.cfg.ReportInterval) * time.Second)
-		fmt.Printf("sender run with %v\n", s.stats.PollCount)
+		s.log.Infof("sender run with PollCount: %v", s.stats.PollCount)
+
+		metrics := make([]*models.Metrics, 0, len(EnableStats))
 		for index, mType := range EnableStats {
-			body, err := s.getBody(mType, index)
+			metric, err := s.getMetric(mType, index)
 			if err != nil {
-				fmt.Printf("Error get body for index %s: %v\n", index, err)
+				s.log.Errorf("get metrics for index %s: %v", index, err)
 				continue
 			}
 
-			compressedBody, err := s.compress(body)
-			if err != nil {
-				fmt.Printf("Error with compress for index %s: %v\n", index, err)
-				continue
-			}
+			metrics = append(metrics, metric)
+		}
 
-			req, err := http.NewRequest("POST", url, compressedBody)
-			if err != nil {
-				fmt.Printf("Error creating request for %s: %v\n", mType, err)
-				continue
-			}
+		body, err := s.getBody(metrics)
+		if err != nil {
+			s.log.Errorf("get body: %v", err)
+			continue
+		}
 
-			req.Header.Set("Content-Encoding", "gzip")
-			req.Header.Set("Content-Type", "application/json")
+		compressedBody, err := s.compress(body)
+		if err != nil {
+			s.log.Errorf("compress: %v", err)
+			continue
+		}
 
-			resp, err := client.Do(req)
-			if err != nil {
-				fmt.Printf("Error sending data for %s: %v\n", mType, err)
-				continue
-			}
-			err = resp.Body.Close()
-			if err != nil {
-				fmt.Printf("Error closing response body for %s: %v\n", mType, err)
-				continue
-			}
+		req, err := http.NewRequest("POST", url, compressedBody)
+		if err != nil {
+			s.log.Errorf("creating request: %v", err)
+			continue
+		}
+
+		req.Header.Set("Content-Encoding", "gzip")
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := client.Do(req)
+		if err != nil {
+			s.log.Errorf("sending data: %v", err)
+			continue
+		}
+		err = resp.Body.Close()
+		if err != nil {
+			s.log.Errorf("closing response body: %v", err)
+			continue
 		}
 	}
 }
@@ -88,32 +101,36 @@ func (s *Sender) compress(body *bytes.Buffer) (*bytes.Buffer, error) {
 	defer func(gzipWriter *gzip.Writer) {
 		err := gzipWriter.Close()
 		if err != nil {
-			fmt.Printf("Error with gzipWriter.Close: %v\n", err)
+			s.log.Errorf("gzipWriter.Close: %v", err)
 		}
 	}(gzipWriter)
 
 	_, err := gzipWriter.Write(body.Bytes())
 	if err != nil {
-		return nil, fmt.Errorf("error compressing data: %v", err)
+		return nil, fmt.Errorf("error compressing data: %w", err)
 	}
 	if err := gzipWriter.Close(); err != nil {
-		return nil, fmt.Errorf("error closing Gzip writer: %v", err)
+		return nil, fmt.Errorf("error closing Gzip writer: %w", err)
 	}
 
 	return &compressedBody, nil
 }
 
-func (s *Sender) getBody(mType string, index string) (*bytes.Buffer, error) {
+func (s *Sender) getMetric(mType string, index string) (*models.Metrics, error) {
 	val := reflect.ValueOf(*s.stats).FieldByName(index)
 
 	model, err := s.getModel(mType, index, val)
 	if err != nil {
-		return nil, fmt.Errorf("error creating model for %s: %v", mType, err)
+		return nil, fmt.Errorf("error creating model for %s: %w", mType, err)
 	}
 
-	modelJSON, err := json.Marshal(model)
+	return model, nil
+}
+
+func (s *Sender) getBody(body []*models.Metrics) (*bytes.Buffer, error) {
+	modelJSON, err := json.Marshal(body)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling model for %s: %v", mType, err)
+		return nil, fmt.Errorf("error marshaling body: %w", err)
 	}
 
 	return bytes.NewBuffer(modelJSON), nil
@@ -128,7 +145,7 @@ func (s *Sender) getModel(mType string, index string, val reflect.Value) (*model
 }
 
 func (s *Sender) getGaugeModel(mType string, index string, val reflect.Value) (*models.Metrics, error) {
-	value, err := helper.ConvertReflectValueToFloat64(val)
+	value, err := converter.ReflectValueToFloat64(val)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +158,7 @@ func (s *Sender) getGaugeModel(mType string, index string, val reflect.Value) (*
 }
 
 func (s *Sender) getCounterModel(mType string, index string, val reflect.Value) (*models.Metrics, error) {
-	value, err := helper.ConvertReflectValueToInt64(val)
+	value, err := converter.ReflectValueToInt64(val)
 	if err != nil {
 		return nil, err
 	}

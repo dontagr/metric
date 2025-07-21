@@ -2,7 +2,6 @@ package httpserver
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -28,7 +27,7 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 		LogResponseSize: true,
 		LogLatency:      true,
 		HandleError:     true,
-		LogHeaders:      []string{echo.HeaderContentType},
+		LogHeaders:      []string{echo.HeaderContentType, echo.HeaderContentEncoding, echo.HeaderAcceptEncoding},
 		LogValuesFunc: func(_ echo.Context, v middleware.RequestLoggerValues) error {
 			if v.Error == nil {
 				log.Infow("Request", "Method", v.Method, "URI", v.URI, "Status", v.Status, "Duration", v.Latency, "ResponseSize", v.ResponseSize, "Headers", v.Headers)
@@ -44,11 +43,10 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			fmt.Printf("Starting HTTP server. Bind: %s\n", cfg.HTTPServer.BindAddress)
+			log.Infof("starting HTTP server. Bind: %s", cfg.HTTPServer.BindAddress)
 			go func() {
 				if err := mainServer.Start(cfg.HTTPServer.BindAddress); err != nil && err != http.ErrServerClosed {
-					fmt.Println("Failed to HTTP Serve")
-					fmt.Println(err)
+					log.Errorf("failed to start HTTP Server: %v", err)
 					_ = shutdowner.Shutdown()
 				}
 			}()

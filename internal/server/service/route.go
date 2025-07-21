@@ -12,4 +12,6 @@ func BindRoutes(server *httpserver.HTTPServer, h *UpdateHandler) {
 	server.Master.GET("/", h.GetAllMetric)
 	server.Master.POST("/update/", h.UpdateMetric)
 	server.Master.POST("/value/", h.GetMetric)
+	server.Master.GET("/ping", h.Ping)
+	server.Master.POST("/updates/", h.UpdatesMetric)
 }

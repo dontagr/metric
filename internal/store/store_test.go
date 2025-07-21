@@ -28,7 +28,7 @@ func TestMemStorage_SaveMetric(t *testing.T) {
 			fields: fields{collection: make(map[string]*models.Metrics)},
 			args:   args{metrics: &models.Metrics{ID: "test", MType: models.Gauge, Value: &testFloat}},
 			want: fields{collection: map[string]*models.Metrics{
-				"gauge_test": &models.Metrics{ID: "test", MType: models.Gauge, Value: &testFloat},
+				"gauge_test": {ID: "test", MType: models.Gauge, Value: &testFloat},
 			}},
 		},
 	}
@@ -37,7 +37,10 @@ func TestMemStorage_SaveMetric(t *testing.T) {
 			m := &MemStorage{
 				collection: tt.fields.collection,
 			}
-			m.SaveMetric(tt.args.metrics)
+			err := m.SaveMetric(tt.args.metrics)
+			if err != nil {
+				return
+			}
 			assert.Equal(t, m.collection, tt.want.collection)
 		})
 	}
@@ -62,7 +65,7 @@ func TestMemStorage_LoadMetric(t *testing.T) {
 			name: "load test",
 			fields: fields{
 				collection: map[string]*models.Metrics{
-					"gauge_test": &models.Metrics{ID: "test", MType: models.Gauge, Value: &testFloat},
+					"gauge_test": {ID: "test", MType: models.Gauge, Value: &testFloat},
 				},
 			},
 			args: args{
@@ -77,7 +80,7 @@ func TestMemStorage_LoadMetric(t *testing.T) {
 			m := &MemStorage{
 				collection: tt.fields.collection,
 			}
-			if got := m.LoadMetric(tt.args.id, tt.args.mType); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := m.LoadMetric(tt.args.id, tt.args.mType); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("LoadMetric() = %v, want %v", got, tt.want)
 			}
 		})
@@ -93,12 +96,13 @@ func TestNewMemStorage(t *testing.T) {
 			name: "test storage",
 			want: &MemStorage{
 				collection: make(map[string]*models.Metrics),
+				name:       models.StoreMem,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewMemStorage(); !reflect.DeepEqual(got, tt.want) {
+			if got := newMemStorage(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewMemStorage() = %v, want %v", got, tt.want)
 			}
 		})

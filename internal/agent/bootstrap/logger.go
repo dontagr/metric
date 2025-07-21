@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	server "github.com/dontagr/metric/internal/server/config"
+	agent "github.com/dontagr/metric/internal/agent/config"
 )
 
 var Logger = fx.Options(
@@ -21,7 +21,7 @@ var Logger = fx.Options(
 	}),
 )
 
-func newLogger(lc fx.Lifecycle, cnf *server.Config) (*zap.SugaredLogger, error) {
+func newLogger(lc fx.Lifecycle, cnf *agent.Config) (*zap.SugaredLogger, error) {
 	cfg := zap.NewProductionConfig()
 
 	lvl, err := zap.ParseAtomicLevel(cnf.Log.LogLevel)
@@ -29,8 +29,8 @@ func newLogger(lc fx.Lifecycle, cnf *server.Config) (*zap.SugaredLogger, error) 
 		return nil, err
 	}
 
-	cfg.EncoderConfig.TimeKey = "dt"
-	cfg.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("01/02 03:04:05PM")
+	cfg.EncoderConfig.TimeKey = "@timestamp"
+	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	cfg.Level = lvl
 	logger, err := cfg.Build()
 

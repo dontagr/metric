@@ -17,6 +17,7 @@ func TestCreateApp(t *testing.T) {
 		{
 			name: "create di",
 			want: fx.Options(
+				bootstrap.Logger,
 				bootstrap.Config,
 				bootstrap.Worker,
 				bootstrap.Stats,
