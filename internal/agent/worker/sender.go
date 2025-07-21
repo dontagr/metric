@@ -16,6 +16,7 @@ import (
 	"github.com/dontagr/metric/internal/agent/config"
 	"github.com/dontagr/metric/internal/agent/converter"
 	"github.com/dontagr/metric/internal/agent/service"
+	"github.com/dontagr/metric/internal/common/hash"
 	"github.com/dontagr/metric/models"
 )
 
@@ -81,6 +82,11 @@ func (s *Sender) Handle() {
 
 		req.Header.Set("Content-Encoding", "gzip")
 		req.Header.Set("Content-Type", "application/json")
+		if s.cfg.Security.Key != "" {
+			for _, metric := range metrics {
+				req.Header.Add("HashSHA256", metric.Hash)
+			}
+		}
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -122,6 +128,15 @@ func (s *Sender) getMetric(mType string, index string) (*models.Metrics, error) 
 	model, err := s.getModel(mType, index, val)
 	if err != nil {
 		return nil, fmt.Errorf("error creating model for %s: %w", mType, err)
+	}
+
+	if s.cfg.Security.Key != "" {
+		computedHash, err := hash.ComputeHash(s.cfg.Security.Key, model)
+		if err != nil {
+			return nil, fmt.Errorf("ошибка вычисления хеша")
+		}
+
+		model.Hash = computedHash
 	}
 
 	return model, nil

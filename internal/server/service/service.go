@@ -1,9 +1,6 @@
 package service
 
 import (
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,6 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 
+	"github.com/dontagr/metric/internal/common/hash"
 	"github.com/dontagr/metric/models"
 )
 
@@ -65,7 +63,7 @@ func (h *UpdateHandler) processUpdateData(requestData *requestMetric, oldMetric 
 	}
 
 	if h.Key != "" {
-		computedHash, err := h.computeHash(newMetric)
+		computedHash, err := hash.ComputeHash(h.Key, newMetric)
 		if err != nil {
 			return nil, &echo.HTTPError{Code: http.StatusInternalServerError, Message: "Ошибка вычисления хеша"}
 		}
@@ -88,7 +86,7 @@ func (h *UpdateHandler) processUpdateData(requestData *requestMetric, oldMetric 
 	}
 
 	if h.Key != "" {
-		computedHash, err := h.computeHash(newMetric)
+		computedHash, err := hash.ComputeHash(h.Key, newMetric)
 		if err != nil {
 			return nil, &echo.HTTPError{Code: http.StatusInternalServerError, Message: "Ошибка вычисления хеша"}
 		}
@@ -97,21 +95,4 @@ func (h *UpdateHandler) processUpdateData(requestData *requestMetric, oldMetric 
 	}
 
 	return newMetric, nil
-}
-
-func (h *UpdateHandler) computeHash(metric *models.Metrics) (string, error) {
-	hmacHasher := hmac.New(sha256.New, []byte(h.Key))
-
-	hmacHasher.Write([]byte(metric.ID))
-	hmacHasher.Write([]byte(metric.MType))
-	if metric.Delta != nil {
-		hmacHasher.Write([]byte(fmt.Sprintf("%d", *metric.Delta)))
-	}
-	if metric.Value != nil {
-		hmacHasher.Write([]byte(fmt.Sprintf("%f", *metric.Value)))
-	}
-
-	hash := hex.EncodeToString(hmacHasher.Sum(nil))
-
-	return hash, nil
 }

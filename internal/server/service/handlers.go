@@ -94,16 +94,6 @@ func (h *UpdateHandler) GetAllMetric(c echo.Context) error {
 }
 
 func (h *UpdateHandler) UpdatesMetric(c echo.Context) error {
-	//bodyBytes, err1 := ioutil.ReadAll(c.Request().Body)
-	//if err1 != nil {
-	//	return &echo.HTTPError{Code: http.StatusInternalServerError, Message: "Ошибка чтения тела запроса"}
-	//}
-	//// Вывод прочитанных данных в лог (для отладки)
-	//fmt.Println("Прочитанное тело запроса:", string(bodyBytes))
-	//
-	//// Сбрасываем ридер до начала, чтобы последующий вызов c.Bind мог снова прочитать данные.
-	//c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-
 	var requestArrayMetric requestArrayMetric
 	err := c.Bind(&requestArrayMetric)
 	if err != nil {
@@ -143,16 +133,6 @@ func (h *UpdateHandler) UpdatesMetric(c echo.Context) error {
 }
 
 func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
-	//bodyBytes, err1 := ioutil.ReadAll(c.Request().Body)
-	//if err1 != nil {
-	//	return &echo.HTTPError{Code: http.StatusInternalServerError, Message: "Ошибка чтения тела запроса"}
-	//}
-	//// Вывод прочитанных данных в лог (для отладки)
-	//fmt.Println("Прочитанное тело запроса:", string(bodyBytes))
-	//
-	//// Сбрасываем ридер до начала, чтобы последующий вызов c.Bind мог снова прочитать данные.
-	//c.Request().Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
-
 	var requestMetric requestMetric
 	err := c.Bind(&requestMetric)
 	if err != nil {
