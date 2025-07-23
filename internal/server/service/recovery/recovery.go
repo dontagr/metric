@@ -9,13 +9,13 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/server/config"
-	"github.com/dontagr/metric/internal/server/service/intersaces"
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 	"github.com/dontagr/metric/internal/store"
 	"github.com/dontagr/metric/models"
 )
 
 type Recovery struct {
-	store       intersaces.Store
+	store       interfaces.Store
 	filer       *store.Filer
 	autoRestore bool
 	log         *zap.SugaredLogger

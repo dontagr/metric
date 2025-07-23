@@ -6,7 +6,7 @@
     "LogLevel": "INFO"
   },
   "Store": {
-    "Interval": 0,
+    "Interval": 100,
     "FilePath": "./",
     "FileName": "bochenok_s_medom",
     "Restore": true

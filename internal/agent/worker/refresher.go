@@ -38,7 +38,10 @@ func NewRefresher(cfg *config.Config, log *zap.SugaredLogger, stats *service.Sta
 func (s *Refresher) Handle() {
 	for {
 		s.log.Debug("refresher run")
-		s.stats.Update()
+
+		s.stats.SendWg.Wait()
+		go s.stats.Update()
+		go s.stats.UpdateAdditional()
 
 		time.Sleep(time.Duration(s.cfg.PollInterval) * time.Second)
 	}

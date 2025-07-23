@@ -7,5 +7,6 @@
   },
   "Security": {
     "Key": "test"
-  }
+  },
+  "RateLimit": 2
 }

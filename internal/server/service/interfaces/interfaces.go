@@ -1,4 +1,4 @@
-package intersaces
+package interfaces
 
 import (
 	"context"

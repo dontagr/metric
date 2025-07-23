@@ -12,7 +12,7 @@ import (
 	"github.com/dontagr/metric/internal/server/metric/gauge"
 	"github.com/dontagr/metric/internal/server/service"
 	"github.com/dontagr/metric/internal/server/service/event"
-	"github.com/dontagr/metric/internal/server/service/intersaces"
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 	"github.com/dontagr/metric/internal/server/service/recovery"
 	"github.com/dontagr/metric/internal/store"
 	"github.com/dontagr/metric/models"
@@ -25,7 +25,7 @@ var Service = fx.Options(
 		recovery.NewRecovery,
 		fx.Annotate(
 			newService,
-			fx.As(new(intersaces.Service)),
+			fx.As(new(interfaces.Service)),
 		),
 	),
 	fx.Invoke(

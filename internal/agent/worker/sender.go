@@ -21,16 +21,31 @@ import (
 )
 
 type Sender struct {
-	cfg   *config.Config
-	stats *service.Stats
-	log   *zap.SugaredLogger
+	cfg     *config.Config
+	stats   *service.Stats
+	log     *zap.SugaredLogger
+	model   ModelInterface
+	url     string
+	client  *http.Client
+	workers int
 }
 
 func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle) *Sender {
 	s := &Sender{
-		cfg:   cfg,
-		stats: stats,
-		log:   log,
+		cfg:    cfg,
+		stats:  stats,
+		log:    log,
+		client: &http.Client{},
+	}
+
+	if s.cfg.RateLimit == 0 {
+		s.workers = 1
+		s.model = &batchModel{}
+		s.url = fmt.Sprintf("http://%s/updates/", s.cfg.HTTPBindAddress)
+	} else {
+		s.workers = s.cfg.RateLimit
+		s.model = &singleModel{}
+		s.url = fmt.Sprintf("http://%s/update/", s.cfg.HTTPBindAddress)
 	}
 
 	lc.Append(fx.Hook{
@@ -44,28 +59,18 @@ func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats,
 	return s
 }
 
-func (s *Sender) Handle() {
-	client := &http.Client{}
-	url := fmt.Sprintf("http://%s/updates/", s.cfg.HTTPBindAddress)
-	for {
-		time.Sleep(time.Duration(s.cfg.ReportInterval) * time.Second)
-		s.log.Infof("sender run with PollCount: %v", s.stats.PollCount)
+type (
+	ModelInterface interface {
+		GetJobs(s *Sender, jobs chan any)
+	}
+)
 
-		metrics := make([]*models.Metrics, 0, len(EnableStats))
-		for index, mType := range EnableStats {
-			metric, err := s.getMetric(mType, index)
-			if err != nil {
-				s.log.Errorf("get metrics for index %s: %v", index, err)
-				continue
-			}
-
-			metrics = append(metrics, metric)
-		}
-
-		body, err := s.getBody(metrics)
+func (s *Sender) worker(jobs chan any) {
+	for row := range jobs {
+		body, err := s.getBody(row)
 		if err != nil {
 			s.log.Errorf("get body: %v", err)
-			continue
+			break
 		}
 
 		compressedBody, err := s.compress(body)
@@ -74,7 +79,7 @@ func (s *Sender) Handle() {
 			continue
 		}
 
-		req, err := http.NewRequest("POST", url, compressedBody)
+		req, err := http.NewRequest("POST", s.url, compressedBody)
 		if err != nil {
 			s.log.Errorf("creating request: %v", err)
 			continue
@@ -83,12 +88,14 @@ func (s *Sender) Handle() {
 		req.Header.Set("Content-Encoding", "gzip")
 		req.Header.Set("Content-Type", "application/json")
 		if s.cfg.Security.Key != "" {
-			for _, metric := range metrics {
-				req.Header.Add("HashSHA256", metric.Hash)
+			outHash := make(chan string)
+			s.GetHash(row, outHash)
+			for hashRow := range outHash {
+				req.Header.Add("HashSHA256", hashRow)
 			}
 		}
 
-		resp, err := client.Do(req)
+		resp, err := s.client.Do(req)
 		if err != nil {
 			s.log.Errorf("sending data: %v", err)
 			continue
@@ -98,6 +105,41 @@ func (s *Sender) Handle() {
 			s.log.Errorf("closing response body: %v", err)
 			continue
 		}
+	}
+}
+
+func (s *Sender) Handle() {
+	jobs := make(chan any, s.workers)
+	for w := 1; w <= s.workers; w++ {
+		go s.worker(jobs)
+	}
+
+	for {
+		time.Sleep(time.Duration(s.cfg.ReportInterval) * time.Second)
+
+		s.stats.UpdateWg.Wait()
+		s.stats.SendWg.Add(1)
+		s.model.GetJobs(s, jobs)
+		s.stats.SendWg.Done()
+
+		s.log.Infof("sender run with PollCount: %v", s.stats.PollCount)
+	}
+}
+
+func (s *Sender) GetHash(row any, outHash chan<- string) {
+	defer close(outHash)
+
+	switch v := row.(type) {
+	case []any:
+		for _, i := range v {
+			if g, ok := i.(*models.Metrics); ok {
+				outHash <- g.Hash
+			}
+		}
+		return
+	case *models.Metrics:
+		outHash <- v.Hash
+		return
 	}
 }
 
@@ -137,7 +179,7 @@ func (s *Sender) getMetric(mType string, index string) (*models.Metrics, error) 
 	return model, nil
 }
 
-func (s *Sender) getBody(body []*models.Metrics) (*bytes.Buffer, error) {
+func (s *Sender) getBody(body any) (*bytes.Buffer, error) {
 	modelJSON, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling body: %w", err)

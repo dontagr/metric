@@ -5,7 +5,7 @@ import (
 
 	"github.com/dontagr/metric/internal/server/config"
 	"github.com/dontagr/metric/internal/server/service/handler"
-	"github.com/dontagr/metric/internal/server/service/intersaces"
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 )
 
 var Route = fx.Options(
@@ -16,7 +16,7 @@ var Route = fx.Options(
 	),
 )
 
-func newUpdateHandler(cnf *config.Config, service intersaces.Service) (*handler.UpdateHandler, error) {
+func newUpdateHandler(cnf *config.Config, service interfaces.Service) (*handler.UpdateHandler, error) {
 	uh := handler.UpdateHandler{
 		Service: service,
 		HashKey: cnf.Security.Key,

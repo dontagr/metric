@@ -7,13 +7,13 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/dontagr/metric/internal/common/hash"
-	"github.com/dontagr/metric/internal/server/service/intersaces"
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 	serviceModels "github.com/dontagr/metric/internal/server/service/models"
 	"github.com/dontagr/metric/models"
 )
 
 type UpdateHandler struct {
-	Service intersaces.Service
+	Service interfaces.Service
 	HashKey string
 }
 

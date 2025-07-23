@@ -14,14 +14,14 @@ import (
 	"github.com/dontagr/metric/internal/common/hash"
 	"github.com/dontagr/metric/internal/server/metric/factory"
 	"github.com/dontagr/metric/internal/server/service/event"
-	"github.com/dontagr/metric/internal/server/service/intersaces"
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 	serviceModels "github.com/dontagr/metric/internal/server/service/models"
 	"github.com/dontagr/metric/models"
 )
 
 type Service struct {
 	MetricFactory  *factory.MetricFactory
-	Store          intersaces.Store
+	Store          interfaces.Store
 	Event          *event.Event
 	IsDirectBackup bool
 	HashKey        string

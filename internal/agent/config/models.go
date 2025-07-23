@@ -6,6 +6,7 @@ type Config struct {
 	ReportInterval  int      `json:"ReportInterval" env:"REPORT_INTERVAL" validate:"required"`
 	HTTPBindAddress string   `json:"HTTPBindAddress" env:"ADDRESS" validate:"required"`
 	Security        Security `json:"Security"`
+	RateLimit       int      `json:"RateLimit" env:"RATE_LIMIT"`
 }
 
 type Security struct {
