@@ -8,5 +8,5 @@
   "Security": {
     "Key": "test"
   },
-  "RateLimit": 2
+  "RateLimit": 5
 }

@@ -125,7 +125,7 @@ func (s *Sender) worker(jobs chan any) {
 			continue
 		}
 
-		if bodyClose == false {
+		if !bodyClose {
 			err = resp.Body.Close()
 			if err != nil {
 				s.log.Errorf("closing response body: %v", err)
