@@ -76,9 +76,10 @@ func (pg *pg) addShema(ctx context.Context) error {
 }
 
 func (pg *pg) LoadMetric(id string, mType string) (*models.Metrics, error) {
-	var metrics models.Metrics
-
 	pg.mx.RLock()
+	defer pg.mx.RUnlock()
+
+	var metrics models.Metrics
 	err := pg.dbpool.QueryRow(context.Background(), searchSQL, id, mType).Scan(
 		&metrics.ID,
 		&metrics.MType,
@@ -86,7 +87,6 @@ func (pg *pg) LoadMetric(id string, mType string) (*models.Metrics, error) {
 		&metrics.Value,
 		&metrics.Hash,
 	)
-	pg.mx.RUnlock()
 	if err != nil {
 		return nil, err
 	}
@@ -95,11 +95,11 @@ func (pg *pg) LoadMetric(id string, mType string) (*models.Metrics, error) {
 }
 
 func (pg *pg) SaveMetric(metrics *models.Metrics) error {
-	id, mtype, delta, value, hash := pg.unpack(metrics)
-
 	pg.mx.Lock()
+	defer pg.mx.Unlock()
+
+	id, mtype, delta, value, hash := pg.unpack(metrics)
 	_, err := pg.dbpool.Exec(context.Background(), insertSQL, id, mtype, delta, value, hash)
-	pg.mx.Unlock()
 	if err != nil {
 		return fmt.Errorf("ошибка при сохранении метрики: %w", err)
 	}
@@ -111,6 +111,7 @@ func (pg *pg) BulkSaveMetric(metrics map[string]*models.Metrics) error {
 	pg.mx.Lock()
 	tx, txErr := pg.dbpool.Begin(context.Background())
 	if txErr != nil {
+		pg.mx.Unlock()
 		return fmt.Errorf("ошибка начала транзакции: %w", txErr)
 	}
 	defer func(txErr *error) {
@@ -151,11 +152,10 @@ func (pg *pg) unpack(metrics *models.Metrics) (string, string, *int64, *float64,
 }
 
 func (pg *pg) ListMetric() (map[string]*models.Metrics, error) {
-	r := make(map[string]*models.Metrics)
-
 	pg.mx.RLock()
 	defer pg.mx.RUnlock()
 
+	r := make(map[string]*models.Metrics)
 	rows, err := pg.dbpool.Query(context.Background(), selectAllSQL)
 	if err != nil {
 		return r, fmt.Errorf("ошибка при извлечении метрик: %w", err)
@@ -178,6 +178,7 @@ func (pg *pg) RestoreMetricCollection(ctx context.Context, collection map[string
 	pg.mx.Lock()
 	tx, txErr := pg.dbpool.Begin(ctx)
 	if txErr != nil {
+		pg.mx.Unlock()
 		return fmt.Errorf("ошибка начала транзакции: %w", txErr)
 	}
 	defer func(txErr *error) {

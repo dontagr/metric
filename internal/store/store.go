@@ -33,8 +33,9 @@ func (m *MemStorage) GetName() string {
 
 func (m *MemStorage) LoadMetric(id string, mType string) (*models.Metrics, error) {
 	m.mx.RLock()
+	defer m.mx.RUnlock()
+
 	metrics, ok := m.collection[fmt.Sprintf("%s_%s", mType, id)]
-	m.mx.RUnlock()
 	if !ok {
 		return &models.Metrics{}, pgx.ErrNoRows
 	}
@@ -44,18 +45,20 @@ func (m *MemStorage) LoadMetric(id string, mType string) (*models.Metrics, error
 
 func (m *MemStorage) SaveMetric(metrics *models.Metrics) error {
 	m.mx.Lock()
+	defer m.mx.Unlock()
+
 	m.collection[fmt.Sprintf("%s_%s", metrics.MType, metrics.ID)] = metrics
-	m.mx.Unlock()
 
 	return nil
 }
 
 func (m *MemStorage) BulkSaveMetric(metrics map[string]*models.Metrics) error {
 	m.mx.Lock()
+	defer m.mx.Unlock()
+
 	for _, metric := range metrics {
 		m.collection[fmt.Sprintf("%s_%s", metric.MType, metric.ID)] = metric
 	}
-	m.mx.Unlock()
 
 	return nil
 }
@@ -69,8 +72,9 @@ func (m *MemStorage) ListMetric() (map[string]*models.Metrics, error) {
 
 func (m *MemStorage) RestoreMetricCollection(_ context.Context, collection map[string]*models.Metrics) error {
 	m.mx.Lock()
+	defer m.mx.Unlock()
+
 	m.collection = collection
-	m.mx.Unlock()
 
 	return nil
 }
