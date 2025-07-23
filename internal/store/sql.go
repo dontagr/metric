@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -40,6 +41,7 @@ const (
 )
 
 type pg struct {
+	mx     sync.RWMutex
 	dbpool *pgretry.PgxRetry
 	name   string
 	log    *zap.SugaredLogger
@@ -76,6 +78,7 @@ func (pg *pg) addShema(ctx context.Context) error {
 func (pg *pg) LoadMetric(id string, mType string) (*models.Metrics, error) {
 	var metrics models.Metrics
 
+	pg.mx.RLock()
 	err := pg.dbpool.QueryRow(context.Background(), searchSQL, id, mType).Scan(
 		&metrics.ID,
 		&metrics.MType,
@@ -83,6 +86,7 @@ func (pg *pg) LoadMetric(id string, mType string) (*models.Metrics, error) {
 		&metrics.Value,
 		&metrics.Hash,
 	)
+	pg.mx.RUnlock()
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +97,9 @@ func (pg *pg) LoadMetric(id string, mType string) (*models.Metrics, error) {
 func (pg *pg) SaveMetric(metrics *models.Metrics) error {
 	id, mtype, delta, value, hash := pg.unpack(metrics)
 
+	pg.mx.Lock()
 	_, err := pg.dbpool.Exec(context.Background(), insertSQL, id, mtype, delta, value, hash)
+	pg.mx.Unlock()
 	if err != nil {
 		return fmt.Errorf("ошибка при сохранении метрики: %w", err)
 	}
@@ -102,6 +108,7 @@ func (pg *pg) SaveMetric(metrics *models.Metrics) error {
 }
 
 func (pg *pg) BulkSaveMetric(metrics map[string]*models.Metrics) error {
+	pg.mx.Lock()
 	tx, txErr := pg.dbpool.Begin(context.Background())
 	if txErr != nil {
 		return fmt.Errorf("ошибка начала транзакции: %w", txErr)
@@ -116,6 +123,7 @@ func (pg *pg) BulkSaveMetric(metrics map[string]*models.Metrics) error {
 				pg.log.Errorf("ошибка при коммите транзакции: %v", commitErr)
 			}
 		}
+		pg.mx.Unlock()
 	}(&txErr)
 
 	values := make([]interface{}, 0, len(metrics)*5)
@@ -145,6 +153,9 @@ func (pg *pg) unpack(metrics *models.Metrics) (string, string, *int64, *float64,
 func (pg *pg) ListMetric() (map[string]*models.Metrics, error) {
 	r := make(map[string]*models.Metrics)
 
+	pg.mx.RLock()
+	defer pg.mx.RUnlock()
+
 	rows, err := pg.dbpool.Query(context.Background(), selectAllSQL)
 	if err != nil {
 		return r, fmt.Errorf("ошибка при извлечении метрик: %w", err)
@@ -164,6 +175,7 @@ func (pg *pg) ListMetric() (map[string]*models.Metrics, error) {
 }
 
 func (pg *pg) RestoreMetricCollection(ctx context.Context, collection map[string]*models.Metrics) error {
+	pg.mx.Lock()
 	tx, txErr := pg.dbpool.Begin(ctx)
 	if txErr != nil {
 		return fmt.Errorf("ошибка начала транзакции: %w", txErr)
@@ -178,6 +190,7 @@ func (pg *pg) RestoreMetricCollection(ctx context.Context, collection map[string
 				pg.log.Errorf("ошибка при коммите транзакции: %v", commitErr)
 			}
 		}
+		pg.mx.Unlock()
 	}(&txErr)
 
 	_, execErr := tx.Exec(context.Background(), truncateSQL)
