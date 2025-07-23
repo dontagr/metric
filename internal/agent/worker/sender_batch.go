@@ -4,9 +4,7 @@ import (
 	"github.com/dontagr/metric/models"
 )
 
-type batchModel struct {
-	metrics []*models.Metrics
-}
+type batchModel struct{}
 
 func (bm *batchModel) GetJobs(s *Sender, jobs chan any) {
 	metrics := make([]*models.Metrics, 0, len(EnableStats))
@@ -17,7 +15,7 @@ func (bm *batchModel) GetJobs(s *Sender, jobs chan any) {
 			continue
 		}
 
-		metrics = append(bm.metrics, metric)
+		metrics = append(metrics, metric)
 	}
 
 	jobs <- metrics

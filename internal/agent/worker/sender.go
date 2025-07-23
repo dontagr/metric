@@ -41,10 +41,12 @@ func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats,
 	}
 
 	if s.cfg.RateLimit == 0 {
+		log.Infow("Agent sender run with 1 worker and batchModel")
 		s.workers = 1
 		s.model = &batchModel{}
 		s.url = fmt.Sprintf("http://%s/updates/", s.cfg.HTTPBindAddress)
 	} else {
+		log.Infof("Agent sender run with %d worker and singleModel", s.cfg.RateLimit)
 		s.workers = s.cfg.RateLimit
 		s.model = &singleModel{}
 		s.url = fmt.Sprintf("http://%s/update/", s.cfg.HTTPBindAddress)
@@ -67,23 +69,24 @@ type (
 	}
 )
 
-func (s *Sender) worker(jobs chan any) {
+func (s *Sender) worker(w int, jobs chan any) {
+	s.log.Infof("worker %d runing", w)
 	for row := range jobs {
 		body, err := s.getBody(row)
 		if err != nil {
-			s.log.Errorf("get body: %v", err)
+			s.log.Errorf("worker %d get body: %v", w, err)
 			break
 		}
 
 		compressedBody, err := s.compress(body)
 		if err != nil {
-			s.log.Errorf("compress: %v", err)
+			s.log.Errorf("worker %d compress: %v", w, err)
 			continue
 		}
 
 		req, err := http.NewRequest("POST", s.url, compressedBody)
 		if err != nil {
-			s.log.Errorf("creating request: %v", err)
+			s.log.Errorf("worker %d creating request: %v", w, err)
 			continue
 		}
 
@@ -107,16 +110,17 @@ func (s *Sender) worker(jobs chan any) {
 				// just for linter
 				err = resp.Body.Close()
 				if err != nil {
-					s.log.Errorf("closing response body: %v", err)
+					s.log.Errorf("worker %d closing response body: %v", w, err)
 				}
+				s.log.Infof("worker %d request success full", w)
 				bodyClose = true
 				break
 			}
 			if errors.As(errSend, &netErr) {
-				s.log.Errorf("connection error we try №%d", i+1)
+				s.log.Errorf("worker %d connection error we try №%d", w, i+1)
 				time.Sleep(5 * time.Second)
 			} else {
-				s.log.Errorf("sending data: %v", errSend)
+				s.log.Errorf("worker %d sending data: %v", w, errSend)
 				break
 			}
 		}
@@ -128,7 +132,7 @@ func (s *Sender) worker(jobs chan any) {
 		if !bodyClose {
 			err = resp.Body.Close()
 			if err != nil {
-				s.log.Errorf("closing response body: %v", err)
+				s.log.Errorf("worker %d closing response body: %v", w, err)
 				continue
 			}
 		}
@@ -138,7 +142,7 @@ func (s *Sender) worker(jobs chan any) {
 func (s *Sender) Handle() {
 	jobs := make(chan any, s.workers)
 	for w := 1; w <= s.workers; w++ {
-		go s.worker(jobs)
+		go s.worker(w, jobs)
 	}
 
 	for {

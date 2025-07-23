@@ -34,7 +34,7 @@ func (s *Service) GetMetric(requestMetric serviceModels.RequestMetric) (*models.
 
 	oldMetric, err := s.Store.LoadMetric(requestMetric.MName, requestMetric.MType)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, &echo.HTTPError{Code: http.StatusNotFound, Message: "Not found"}
+		return nil, &echo.HTTPError{Code: http.StatusNotFound, Message: fmt.Sprintf("Not found %s %s", requestMetric.MName, requestMetric.MType)}
 	} else if err != nil {
 		return nil, &echo.HTTPError{Code: http.StatusInternalServerError, Message: fmt.Sprintf("загрузка не удалась для (id: %s, mtype: %s): %v", requestMetric.MName, requestMetric.MType, err)}
 	}
