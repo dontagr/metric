@@ -5,7 +5,9 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"reflect"
 	"time"
@@ -95,11 +97,27 @@ func (s *Sender) worker(jobs chan any) {
 			}
 		}
 
-		resp, err := s.client.Do(req)
-		if err != nil {
-			s.log.Errorf("sending data: %v", err)
+		var resp *http.Response
+		var netErr *net.OpError
+		var errSend error
+		for i := 0; i < 3; i++ { // 3 попытки отправки
+			resp, errSend = s.client.Do(req)
+			if errSend == nil {
+				break
+			}
+			if errors.As(errSend, &netErr) {
+				s.log.Errorf("connection error we try №%d", i+1)
+				time.Sleep(5 * time.Second)
+			} else {
+				s.log.Errorf("sending data: %v", errSend)
+				break
+			}
+		}
+
+		if errSend != nil {
 			continue
 		}
+
 		err = resp.Body.Close()
 		if err != nil {
 			s.log.Errorf("closing response body: %v", err)
