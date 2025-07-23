@@ -62,7 +62,8 @@ func (m *MemStorage) BulkSaveMetric(metrics map[string]*models.Metrics) error {
 
 func (m *MemStorage) ListMetric() (map[string]*models.Metrics, error) {
 	m.mx.RLock()
-	m.mx.RUnlock()
+	defer m.mx.RUnlock()
+
 	return m.collection, nil
 }
 
