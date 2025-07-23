@@ -100,9 +100,16 @@ func (s *Sender) worker(jobs chan any) {
 		var resp *http.Response
 		var netErr *net.OpError
 		var errSend error
-		for i := 0; i < 3; i++ { // 3 попытки отправки
+		bodyClose := false
+		for i := 0; i < 3; i++ {
 			resp, errSend = s.client.Do(req)
 			if errSend == nil {
+				// just for linter
+				err = resp.Body.Close()
+				if err != nil {
+					s.log.Errorf("closing response body: %v", err)
+				}
+				bodyClose = true
 				break
 			}
 			if errors.As(errSend, &netErr) {
@@ -118,10 +125,12 @@ func (s *Sender) worker(jobs chan any) {
 			continue
 		}
 
-		err = resp.Body.Close()
-		if err != nil {
-			s.log.Errorf("closing response body: %v", err)
-			continue
+		if bodyClose == false {
+			err = resp.Body.Close()
+			if err != nil {
+				s.log.Errorf("closing response body: %v", err)
+				continue
+			}
 		}
 	}
 }
