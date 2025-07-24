@@ -5,10 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net"
-	"net/http"
 	"reflect"
 	"time"
 
@@ -18,38 +15,36 @@ import (
 	"github.com/dontagr/metric/internal/agent/config"
 	"github.com/dontagr/metric/internal/agent/converter"
 	"github.com/dontagr/metric/internal/agent/service"
+	"github.com/dontagr/metric/internal/agent/service/transport"
 	"github.com/dontagr/metric/internal/common/hash"
 	"github.com/dontagr/metric/models"
 )
 
 type Sender struct {
-	cfg     *config.Config
-	stats   *service.Stats
-	log     *zap.SugaredLogger
-	model   ModelInterface
-	url     string
-	client  *http.Client
-	workers int
+	cfg       *config.Config
+	stats     *service.Stats
+	log       *zap.SugaredLogger
+	model     ModelInterface
+	workers   int
+	transport transport.Transport
 }
 
-func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle) *Sender {
+func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle, transport *transport.HTTPManager) *Sender {
 	s := &Sender{
-		cfg:    cfg,
-		stats:  stats,
-		log:    log,
-		client: &http.Client{},
+		cfg:       cfg,
+		stats:     stats,
+		log:       log,
+		transport: transport,
 	}
 
 	if s.cfg.RateLimit == 0 {
 		log.Infow("Agent sender run with 1 worker and batchModel")
 		s.workers = 1
 		s.model = &batchModel{}
-		s.url = fmt.Sprintf("http://%s/updates/", s.cfg.HTTPBindAddress)
 	} else {
 		log.Infof("Agent sender run with %d worker and singleModel", s.cfg.RateLimit)
 		s.workers = s.cfg.RateLimit
 		s.model = &singleModel{}
-		s.url = fmt.Sprintf("http://%s/update/", s.cfg.HTTPBindAddress)
 	}
 
 	lc.Append(fx.Hook{
@@ -84,57 +79,18 @@ func (s *Sender) worker(w int, jobs chan any) {
 			continue
 		}
 
-		req, err := http.NewRequest("POST", s.url, compressedBody)
-		if err != nil {
-			s.log.Errorf("worker %d creating request: %v", w, err)
-			continue
-		}
-
-		req.Header.Set("Content-Encoding", "gzip")
-		req.Header.Set("Content-Type", "application/json")
+		HashSHA256 := make([]string, 0, 1)
 		if s.cfg.Security.Key != "" {
 			outHash := make(chan string)
 			s.GetHash(row, outHash)
 			for hashRow := range outHash {
-				req.Header.Add("HashSHA256", hashRow)
+				HashSHA256 = append(HashSHA256, hashRow)
 			}
 		}
 
-		var resp *http.Response
-		var netErr *net.OpError
-		var errSend error
-		bodyClose := false
-		for i := 0; i < 3; i++ {
-			resp, errSend = s.client.Do(req)
-			if errSend == nil {
-				// just for linter
-				err = resp.Body.Close()
-				if err != nil {
-					s.log.Errorf("worker %d closing response body: %v", w, err)
-				}
-				s.log.Infof("worker %d request success full", w)
-				bodyClose = true
-				break
-			}
-			if errors.As(errSend, &netErr) {
-				s.log.Errorf("worker %d connection error we try №%d", w, i+1)
-				time.Sleep(5 * time.Second)
-			} else {
-				s.log.Errorf("worker %d sending data: %v", w, errSend)
-				break
-			}
-		}
-
-		if errSend != nil {
-			continue
-		}
-
-		if !bodyClose {
-			err = resp.Body.Close()
-			if err != nil {
-				s.log.Errorf("worker %d closing response body: %v", w, err)
-				continue
-			}
+		err = s.transport.NewRequest(compressedBody, HashSHA256, w)
+		if err != nil {
+			s.log.Errorf("worker %d: %v", w, err)
 		}
 	}
 }
@@ -204,7 +160,11 @@ func (s *Sender) getMetric(mType string, index string) (*models.Metrics, error) 
 	}
 
 	if s.cfg.Security.Key != "" {
-		model.Hash = hash.ComputeHash(s.cfg.Security.Key, model)
+		hashManager := hash.NewHashManager()
+		hashManager.SetKey(s.cfg.Security.Key)
+		hashManager.SetMetrics(model)
+
+		model.Hash = hashManager.GetHash()
 	}
 
 	return model, nil

@@ -43,7 +43,11 @@ func (h *UpdateHandler) GetMetric(c echo.Context) error {
 		return errEcho
 	}
 	if h.HashKey != "" {
-		c.Response().Header().Set(models.HashAlgKey, hash.StringHash(h.HashKey, value))
+		hashManager := hash.NewHashManager()
+		hashManager.SetKey(h.HashKey)
+		hashManager.SetStringValue(value)
+
+		c.Response().Header().Set(models.HashAlgKey, hashManager.GetHash())
 	}
 
 	return c.HTML(http.StatusOK, value)

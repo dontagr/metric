@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/cenkalti/backoff/v5"
@@ -12,6 +13,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/gommon/log"
 	"go.uber.org/zap"
+)
+
+const (
+	DurationFirstIteration  = 1
+	DurationSecondIteration = 3
+	DurationThirdIteration  = 5
 )
 
 type PgxRetry struct {
@@ -27,16 +34,16 @@ func NewPgxRetry(conn *pgxpool.Pool, log *zap.SugaredLogger) *PgxRetry {
 
 	return &PgxRetry{
 		dbpool:   conn,
-		duration: []int{0, 1, 3, 5},
+		duration: []int{DurationFirstIteration, DurationSecondIteration, DurationThirdIteration},
 		log:      log,
 	}
 }
 
 func (pgr *PgxRetry) Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error) {
 	start := time.Now()
-	iter := 0
+	iter := atomic.Int32{}
 	operation := func() (pgconn.CommandTag, error) {
-		iter++
+		defer iter.Add(1)
 		tag, err := pgr.dbpool.Exec(ctx, sql, arguments...)
 
 		if err != nil {
@@ -44,12 +51,12 @@ func (pgr *PgxRetry) Exec(ctx context.Context, sql string, arguments ...interfac
 			duration := end.Sub(start)
 			var connectErr *pgconn.ConnectError
 			if errors.As(err, &connectErr) {
-				log.Debugf("ошибка подключения к базе; Пробуем еще раз, прошло времени: %v сек, итерация %v", duration.Seconds(), iter)
+				log.Debugf("ошибка подключения к базе; Пробуем еще раз, прошло времени: %v сек, итерация %v", duration.Seconds(), iter.Load()+1)
 
-				return tag, backoff.RetryAfter(pgr.duration[iter])
+				return tag, backoff.RetryAfter(pgr.duration[iter.Load()])
 			}
 
-			log.Debugf("ошибка фатальна; Прошло времени: %v сек, итерация %v", duration.Seconds(), iter)
+			log.Debugf("ошибка фатальна; Прошло времени: %v сек, итерация %v", duration.Seconds(), iter.Load()+1)
 			return tag, backoff.Permanent(err)
 		}
 
@@ -57,7 +64,7 @@ func (pgr *PgxRetry) Exec(ctx context.Context, sql string, arguments ...interfac
 	}
 
 	opt := backoff.ExponentialBackOff{
-		InitialInterval:     time.Duration(pgr.duration[iter]) * time.Second,
+		InitialInterval:     time.Duration(pgr.duration[iter.Load()]) * time.Second,
 		RandomizationFactor: 0,
 		Multiplier:          1,
 		MaxInterval:         time.Duration(10) * time.Second,

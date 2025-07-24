@@ -47,8 +47,8 @@ type Stats struct {
 
 func NewStats() *Stats {
 	return &Stats{
-		UpdateWg: newStatUpdateWg(),
-		SendWg:   newStatSendWg(),
+		UpdateWg: NewStatUpdateWg(),
+		SendWg:   NewStatSendWg(),
 	}
 }
 

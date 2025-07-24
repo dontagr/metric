@@ -15,8 +15,8 @@ func TestNewStats(t *testing.T) {
 		{
 			name: "проверка структуры",
 			want: &Stats{
-				UpdateWg: newStatUpdateWg(),
-				SendWg:   newStatSendWg(),
+				UpdateWg: NewStatUpdateWg(),
+				SendWg:   NewStatSendWg(),
 			},
 		},
 	}
@@ -50,8 +50,8 @@ func TestStats_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Stats{
 				PollCount: tt.fields.PollCount,
-				UpdateWg:  newStatUpdateWg(),
-				SendWg:    newStatSendWg(),
+				UpdateWg:  NewStatUpdateWg(),
+				SendWg:    NewStatSendWg(),
 			}
 			s.Update()
 			s.Update()

@@ -10,7 +10,7 @@ type StatSendWg struct {
 	sync.WaitGroup
 }
 
-func newStatUpdateWg() *StatUpdateWg {
+func NewStatUpdateWg() *StatUpdateWg {
 	statWg := StatUpdateWg{
 		sync.WaitGroup{},
 	}
@@ -18,7 +18,7 @@ func newStatUpdateWg() *StatUpdateWg {
 	return &statWg
 }
 
-func newStatSendWg() *StatSendWg {
+func NewStatSendWg() *StatSendWg {
 	statWg := StatSendWg{
 		sync.WaitGroup{},
 	}

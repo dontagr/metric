@@ -5,30 +5,28 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
-	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/common/hash"
 	"github.com/dontagr/metric/internal/server/metric/factory"
-	"github.com/dontagr/metric/internal/server/service/event"
+	"github.com/dontagr/metric/internal/server/metric/validator"
+	"github.com/dontagr/metric/internal/server/service/backup"
 	"github.com/dontagr/metric/internal/server/service/interfaces"
 	serviceModels "github.com/dontagr/metric/internal/server/service/models"
 	"github.com/dontagr/metric/models"
 )
 
 type Service struct {
-	MetricFactory  *factory.MetricFactory
-	Store          interfaces.Store
-	Event          *event.Event
-	IsDirectBackup bool
-	HashKey        string
+	MetricFactory *factory.MetricFactory
+	Store         interfaces.Store
+	HashKey       string
+	Backup        *backup.Service
 }
 
 func (s *Service) GetMetric(requestMetric serviceModels.RequestMetric) (*models.Metrics, *echo.HTTPError) {
-	if !isValidMetricType(requestMetric.MType) {
+	if !validator.IsValidMType(requestMetric.MType) {
 		return nil, &echo.HTTPError{Code: http.StatusBadRequest, Message: "Invalid type"}
 	}
 
@@ -99,10 +97,7 @@ func (s *Service) UpdateMetrics(requestArrayMetric serviceModels.RequestArrayMet
 		return nil, &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 
-	echoErr := s.backup()
-	if echoErr != nil {
-		return nil, echoErr
-	}
+	s.Backup.Process()
 
 	return metrics, nil
 }
@@ -118,51 +113,13 @@ func (s *Service) UpdateMetric(requestMetric serviceModels.RequestMetric) (*mode
 		return nil, &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 
-	echoErr = s.backup()
-	if echoErr != nil {
-		return nil, echoErr
-	}
+	s.Backup.Process()
 
 	return newMetric, nil
 }
 
-func (s *Service) backup() *echo.HTTPError {
-	if s.IsDirectBackup {
-		metric, err := s.Store.ListMetric()
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return &echo.HTTPError{Code: http.StatusInternalServerError, Message: err.Error()}
-		}
-		s.Event.Metrics <- metric
-	}
-
-	return nil
-}
-
-func isValidMetricType(mType string) bool {
-	if mType == "" {
-		return false
-	}
-	if models.Counter != mType && models.Gauge != mType {
-		return false
-	}
-	return true
-}
-
-func (s *Service) AutoBackUp(interval int, log *zap.SugaredLogger) {
-	for {
-		time.Sleep(time.Duration(interval) * time.Second)
-
-		metric, err := s.Store.ListMetric()
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			log.Error(err)
-		} else {
-			s.Event.Metrics <- metric
-		}
-	}
-}
-
 func (s *Service) processUpdateData(requestData *serviceModels.RequestMetric, oldMetric *models.Metrics) (*models.Metrics, *echo.HTTPError) {
-	if !isValidMetricType(requestData.MType) {
+	if !validator.IsValidMType(requestData.MType) {
 		return nil, &echo.HTTPError{Code: http.StatusBadRequest, Message: "Invalid type"}
 	}
 
@@ -187,8 +144,10 @@ func (s *Service) processUpdateData(requestData *serviceModels.RequestMetric, ol
 	}
 
 	if s.HashKey != "" {
-		computedHash := hash.ComputeHash(s.HashKey, newMetric)
-		if requestData.Hash != nil && computedHash != *requestData.Hash {
+		hashManager := hash.NewHashManager()
+		hashManager.SetKey(s.HashKey)
+		hashManager.SetMetrics(newMetric)
+		if requestData.Hash != nil && hashManager.GetHash() != *requestData.Hash {
 			return nil, &echo.HTTPError{Code: http.StatusBadRequest, Message: "Хеш не совпадает"}
 		}
 	}
@@ -206,7 +165,11 @@ func (s *Service) processUpdateData(requestData *serviceModels.RequestMetric, ol
 	}
 
 	if s.HashKey != "" {
-		newMetric.Hash = hash.ComputeHash(s.HashKey, newMetric)
+		hashManager := hash.NewHashManager()
+		hashManager.SetKey(s.HashKey)
+		hashManager.SetMetrics(newMetric)
+
+		newMetric.Hash = hashManager.GetHash()
 	}
 
 	return newMetric, nil
