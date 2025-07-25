@@ -6,13 +6,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/dontagr/metric/internal/server/service"
+	"github.com/dontagr/metric/internal/server/metric/factory"
 	"github.com/dontagr/metric/models"
 )
 
 func TestRegisterMetric(t *testing.T) {
 	type args struct {
-		mf *service.MetricFactory
+		mf *factory.MetricFactory
 	}
 	tests := []struct {
 		name string
@@ -20,7 +20,7 @@ func TestRegisterMetric(t *testing.T) {
 	}{
 		{
 			name: "еще один тест ((",
-			args: args{mf: service.NewMetricFactory()},
+			args: args{mf: factory.NewMetricFactory()},
 		},
 	}
 	for _, tt := range tests {

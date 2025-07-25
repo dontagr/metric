@@ -7,5 +7,7 @@ import (
 )
 
 var Stats = fx.Options(
-	fx.Provide(service.NewStats),
+	fx.Provide(
+		service.NewStats,
+	),
 )

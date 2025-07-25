@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -14,6 +15,7 @@ import (
 )
 
 type Filer struct {
+	mx       sync.RWMutex
 	filename string
 	perm     uint32
 	log      *zap.SugaredLogger
@@ -38,6 +40,9 @@ func NewFiler(log *zap.SugaredLogger, cfg *config.Config, event *event.Event, lc
 }
 
 func (w *Filer) save(data interface{}) error {
+	w.mx.Lock()
+	defer w.mx.Unlock()
+
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("filer: ошибка сериализации ListMetric в JSON: %w", err)

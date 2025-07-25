@@ -3,20 +3,20 @@ package store
 import (
 	"fmt"
 
-	"github.com/dontagr/metric/internal/server/service/intersaces"
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 )
 
 type StoreFactory struct {
-	Collection map[string]intersaces.Store
+	Collection map[string]interfaces.Store
 }
 
 func NewStoreFactory() *StoreFactory {
 	return &StoreFactory{
-		Collection: make(map[string]intersaces.Store),
+		Collection: make(map[string]interfaces.Store),
 	}
 }
 
-func (f *StoreFactory) GetStore(name string) (intersaces.Store, error) {
+func (f *StoreFactory) GetStore(name string) (interfaces.Store, error) {
 	if val, ok := f.Collection[name]; ok {
 		return val, nil
 	}
@@ -24,6 +24,6 @@ func (f *StoreFactory) GetStore(name string) (intersaces.Store, error) {
 	return nil, fmt.Errorf("story with name %s not found", name)
 }
 
-func (f *StoreFactory) SetStory(s intersaces.Store) {
+func (f *StoreFactory) SetStory(s interfaces.Store) {
 	f.Collection[s.GetName()] = s
 }

@@ -21,6 +21,7 @@ func TestCreateApp(t *testing.T) {
 				bootstrap.Config,
 				bootstrap.Worker,
 				bootstrap.Stats,
+				bootstrap.Service,
 			),
 		},
 	}

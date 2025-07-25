@@ -3,45 +3,69 @@ package service
 import (
 	"math/rand"
 	"runtime"
+
+	"github.com/shirou/gopsutil/v4/load"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 type Stats struct {
-	PollCount     int
-	RandomValue   float64
-	Alloc         uint64
-	BuckHashSys   uint64
-	Frees         uint64
-	GCCPUFraction float64
-	GCSys         uint64
-	HeapAlloc     uint64
-	HeapIdle      uint64
-	HeapInuse     uint64
-	HeapObjects   uint64
-	HeapReleased  uint64
-	HeapSys       uint64
-	LastGC        uint64
-	Lookups       uint64
-	MSpanInuse    uint64
-	MSpanSys      uint64
-	MCacheInuse   uint64
-	MCacheSys     uint64
-	Mallocs       uint64
-	NextGC        uint64
-	NumGC         uint32
-	NumForcedGC   uint32
-	TotalAlloc    uint64
-	Sys           uint64
-	StackInuse    uint64
-	StackSys      uint64
-	OtherSys      uint64
-	PauseTotalNs  uint64
+	UpdateWg        *StatUpdateWg
+	SendWg          *StatSendWg
+	PollCount       int
+	RandomValue     float64
+	Alloc           uint64
+	BuckHashSys     uint64
+	Frees           uint64
+	GCCPUFraction   float64
+	GCSys           uint64
+	HeapAlloc       uint64
+	HeapIdle        uint64
+	HeapInuse       uint64
+	HeapObjects     uint64
+	HeapReleased    uint64
+	HeapSys         uint64
+	LastGC          uint64
+	Lookups         uint64
+	MSpanInuse      uint64
+	MSpanSys        uint64
+	MCacheInuse     uint64
+	MCacheSys       uint64
+	Mallocs         uint64
+	NextGC          uint64
+	NumGC           uint32
+	NumForcedGC     uint32
+	TotalAlloc      uint64
+	Sys             uint64
+	StackInuse      uint64
+	StackSys        uint64
+	OtherSys        uint64
+	PauseTotalNs    uint64
+	TotalMemory     uint64
+	FreeMemory      uint64
+	CPUutilization1 float64
 }
 
 func NewStats() *Stats {
-	return &Stats{}
+	return &Stats{
+		UpdateWg: NewStatUpdateWg(),
+		SendWg:   NewStatSendWg(),
+	}
+}
+
+func (s *Stats) UpdateAdditional() {
+	s.UpdateWg.Add(1)
+	v, _ := mem.VirtualMemory()
+
+	s.TotalMemory = v.Total
+	s.FreeMemory = v.Free
+
+	a, _ := load.Avg()
+	s.CPUutilization1 = a.Load1
+	s.UpdateWg.Done()
 }
 
 func (s *Stats) Update() {
+	s.UpdateWg.Add(1)
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 
@@ -74,4 +98,5 @@ func (s *Stats) Update() {
 	s.StackSys = memStats.StackSys
 	s.OtherSys = memStats.OtherSys
 	s.PauseTotalNs = memStats.PauseTotalNs
+	s.UpdateWg.Done()
 }

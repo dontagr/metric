@@ -11,7 +11,7 @@ import (
 	"github.com/dontagr/metric/internal/server/faultTolerance/pgretry"
 )
 
-var Postgress = fx.Options(
+var Postgres = fx.Options(
 	fx.Provide(
 		newPostgresConnect,
 		pgretry.NewPgxRetry,

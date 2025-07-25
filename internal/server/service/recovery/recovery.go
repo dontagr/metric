@@ -1,4 +1,4 @@
-package service
+package recovery
 
 import (
 	"context"
@@ -9,13 +9,13 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/server/config"
-	"github.com/dontagr/metric/internal/server/service/intersaces"
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 	"github.com/dontagr/metric/internal/store"
 	"github.com/dontagr/metric/models"
 )
 
 type Recovery struct {
-	store       intersaces.Store
+	store       interfaces.Store
 	filer       *store.Filer
 	autoRestore bool
 	log         *zap.SugaredLogger
@@ -41,8 +41,8 @@ func NewRecovery(log *zap.SugaredLogger, sf *store.StoreFactory, filer *store.Fi
 		log:         log,
 	}
 	lc.Append(fx.Hook{
-		OnStart: func(_ context.Context) error {
-			err := r.ResetStoreData()
+		OnStart: func(ctx context.Context) error {
+			err := r.ResetStoreData(ctx)
 			if err != nil {
 				log.Error(err)
 			}
@@ -53,7 +53,7 @@ func NewRecovery(log *zap.SugaredLogger, sf *store.StoreFactory, filer *store.Fi
 	return &r, nil
 }
 
-func (r *Recovery) ResetStoreData() error {
+func (r *Recovery) ResetStoreData(ctx context.Context) error {
 	if !r.autoRestore {
 		return nil
 	}
@@ -69,7 +69,7 @@ func (r *Recovery) ResetStoreData() error {
 		return fmt.Errorf("ошибка при десериализации данных из JSON: %w", err)
 	}
 
-	err = r.store.RestoreMetricCollection(collection)
+	err = r.store.RestoreMetricCollection(ctx, collection)
 	if err != nil {
 		return fmt.Errorf("ошибка при записи в хранилище: %w", err)
 	}

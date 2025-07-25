@@ -17,7 +17,7 @@ func TestCreateApp(t *testing.T) {
 		{
 			name: "create di",
 			want: fx.Options(
-				bootstrap.Postgress,
+				bootstrap.Postgres,
 				bootstrap.Store,
 				bootstrap.Config,
 				bootstrap.Server,

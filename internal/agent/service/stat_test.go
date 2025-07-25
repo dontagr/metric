@@ -14,7 +14,10 @@ func TestNewStats(t *testing.T) {
 	}{
 		{
 			name: "проверка структуры",
-			want: &Stats{},
+			want: &Stats{
+				UpdateWg: NewStatUpdateWg(),
+				SendWg:   NewStatSendWg(),
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -47,6 +50,8 @@ func TestStats_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Stats{
 				PollCount: tt.fields.PollCount,
+				UpdateWg:  NewStatUpdateWg(),
+				SendWg:    NewStatSendWg(),
 			}
 			s.Update()
 			s.Update()

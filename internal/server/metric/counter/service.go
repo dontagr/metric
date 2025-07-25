@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/dontagr/metric/internal/server/service"
+	"github.com/dontagr/metric/internal/server/metric/factory"
 	"github.com/dontagr/metric/models"
 )
 
@@ -12,7 +12,7 @@ type Metric struct {
 	name string
 }
 
-func RegisterMetric(mf *service.MetricFactory) {
+func RegisterMetric(mf *factory.MetricFactory) {
 	mf.SetMetric(&Metric{name: models.Counter})
 }
 
