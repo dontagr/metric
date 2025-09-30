@@ -1,6 +1,8 @@
 package main
 
 import (
+	_ "net/http/pprof"
+
 	"go.uber.org/fx"
 
 	"github.com/dontagr/metric/internal/server/bootstrap"

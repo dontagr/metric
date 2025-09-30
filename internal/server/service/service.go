@@ -75,7 +75,7 @@ func (s *Service) GetAllMetricHTML() (string, *echo.HTTPError) {
 }
 
 func (s *Service) UpdateMetrics(requestArrayMetric serviceModels.RequestArrayMetric) (map[string]*models.Metrics, *echo.HTTPError) {
-	metrics := make(map[string]*models.Metrics)
+	metrics := make(map[string]*models.Metrics, len(requestArrayMetric))
 	for _, requestMetric := range requestArrayMetric {
 		var previousData *models.Metrics
 		key := fmt.Sprintf("%s_%s", requestMetric.MType, requestMetric.MName)
