@@ -17,7 +17,13 @@ func Example() {
 	}
 
 	fmt.Println(new.Hash)
+	fmt.Println(*new.Delta)
+	fmt.Println(new.MType)
+	fmt.Println(new.ID)
 
 	// Output:
 	// test
+	// 123
+	// counter
+	// 1
 }
