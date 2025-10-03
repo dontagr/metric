@@ -8,11 +8,11 @@ import (
 
 	"github.com/dontagr/metric/internal/server/config"
 	"github.com/dontagr/metric/internal/server/service/event"
-	"github.com/dontagr/metric/internal/store"
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 	"github.com/dontagr/metric/models"
 )
 
-func NewBackupService(log *zap.SugaredLogger, sf *store.StoreFactory, event *event.Event, cnf *config.Config, lc fx.Lifecycle) (*Service, error) {
+func NewBackupService(log *zap.SugaredLogger, sf interfaces.IStoreFactory, event *event.Event, cnf *config.Config, lc fx.Lifecycle) (*Service, error) {
 	var storeName string
 	if cnf.DataBase.Init {
 		storeName = models.StorePg

@@ -10,7 +10,7 @@ type StoreFactory struct {
 	Collection map[string]interfaces.Store
 }
 
-func NewStoreFactory() *StoreFactory {
+func NewStoreFactory() interfaces.IStoreFactory {
 	return &StoreFactory{
 		Collection: make(map[string]interfaces.Store),
 	}
