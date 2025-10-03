@@ -55,7 +55,7 @@ func (h *HTTPManager) NewRequest(compressedBody *bytes.Buffer, HashSHA256 []stri
 				return fmt.Errorf("closing response body: %v", err)
 			}
 			h.log.Infof("worker %d request success full", w)
-			bodyClose = true
+			bodyClose = true //nolint
 			return nil
 		}
 		if errors.As(errSend, &netErr) {
