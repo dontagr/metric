@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/server/faultTolerance/pgretry"
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 	"github.com/dontagr/metric/models"
 )
 
@@ -47,7 +48,7 @@ type pg struct {
 	log    *zap.SugaredLogger
 }
 
-func RegisterStorePG(log *zap.SugaredLogger, ms *StoreFactory, dbpool *pgretry.PgxRetry, lc fx.Lifecycle) {
+func RegisterStorePG(log *zap.SugaredLogger, ms interfaces.IStoreFactory, dbpool *pgretry.PgxRetry, lc fx.Lifecycle) {
 	pg := pg{
 		dbpool: dbpool,
 		name:   models.StorePg,

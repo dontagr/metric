@@ -26,7 +26,6 @@ type (
 		Process(oldValue *models.Metrics, newValue *models.Metrics) error
 		ReturnValue(metrics *models.Metrics) string
 	}
-
 	Service interface {
 		GetMetric(requestMetric serviceModels.RequestMetric) (*models.Metrics, *echo.HTTPError)
 		GetStringValue(metrics *models.Metrics) (string, *echo.HTTPError)
@@ -34,5 +33,9 @@ type (
 		UpdateMetrics(requestArrayMetric serviceModels.RequestArrayMetric) (map[string]*models.Metrics, *echo.HTTPError)
 		UpdateMetric(requestMetric serviceModels.RequestMetric) (*models.Metrics, *echo.HTTPError)
 		Ping(ctx context.Context) error
+	}
+	IStoreFactory interface {
+		GetStore(name string) (Store, error)
+		SetStory(s Store)
 	}
 )

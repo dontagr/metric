@@ -21,7 +21,7 @@ type Recovery struct {
 	log         *zap.SugaredLogger
 }
 
-func NewRecovery(log *zap.SugaredLogger, sf *store.StoreFactory, filer *store.Filer, cfg *config.Config, lc fx.Lifecycle) (*Recovery, error) {
+func NewRecovery(log *zap.SugaredLogger, sf interfaces.IStoreFactory, filer *store.Filer, cfg *config.Config, lc fx.Lifecycle) (*Recovery, error) {
 	var storeName string
 	if cfg.DataBase.Init {
 		storeName = models.StorePg

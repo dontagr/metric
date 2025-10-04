@@ -12,12 +12,12 @@ var Route = fx.Options(
 	fx.Provide(newUpdateHandler),
 	fx.Invoke(
 		handler.BindRoutes,
-		func(*handler.UpdateHandler) {},
+		func(*handler.Handler) {},
 	),
 )
 
-func newUpdateHandler(cnf *config.Config, service interfaces.Service) (*handler.UpdateHandler, error) {
-	uh := handler.UpdateHandler{
+func newUpdateHandler(cnf *config.Config, service interfaces.Service) (*handler.Handler, error) {
+	uh := handler.Handler{
 		Service: service,
 		HashKey: cnf.Security.Key,
 	}

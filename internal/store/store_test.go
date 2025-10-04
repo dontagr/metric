@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/go-playground/assert/v2"
+	"github.com/stretchr/testify/mock"
 
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 	"github.com/dontagr/metric/models"
 )
 
@@ -107,4 +109,46 @@ func TestNewMemStorage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRegisterStoreMem(t *testing.T) {
+	ms := NewMockStoreFactory()
+
+	expectedStore := newMemStorage()
+	ms.On("GetStore", models.StoreMem).Return(expectedStore, nil)
+
+	RegisterStoreMem(ms)
+
+	store, err := ms.GetStore(models.StoreMem)
+	if err != nil {
+		t.Errorf("Expected store to be registered, but got error: %v", err)
+	}
+
+	memStore, ok := store.(*MemStorage)
+	if !ok {
+		t.Errorf("Expected store to be of type *MemStorage, but got %T", store)
+	}
+
+	if memStore.GetName() != models.StoreMem {
+		t.Errorf("Expected store name to be %s, but got %s", models.StoreMem, memStore.GetName())
+	}
+
+	ms.AssertCalled(t, "GetStore", models.StoreMem)
+}
+
+type MockStoreFactory struct {
+	mock.Mock
+}
+
+func NewMockStoreFactory() *MockStoreFactory {
+	return &MockStoreFactory{}
+}
+
+func (m *MockStoreFactory) GetStore(name string) (interfaces.Store, error) {
+	args := m.Called(name)
+	return args.Get(0).(interfaces.Store), args.Error(1)
+}
+
+func (m *MockStoreFactory) SetStory(s interfaces.Store) {
+	//m.Called(s.GetName())
 }

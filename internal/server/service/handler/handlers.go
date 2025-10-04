@@ -1,3 +1,4 @@
+// Модуль handler представляет собой сервисный слой где описана бизнес логика обработки входящих запросов
 package handler
 
 import (
@@ -12,12 +13,14 @@ import (
 	"github.com/dontagr/metric/models"
 )
 
-type UpdateHandler struct {
-	Service interfaces.Service
-	HashKey string
+// Handler обрабатывает входящие запросы
+type Handler struct {
+	Service interfaces.Service // сервис для реализации обмена данных с хранилищем
+	HashKey string             // ключ хэширования
 }
 
-func (h *UpdateHandler) GetMetric(c echo.Context) error {
+// GetMetric получить метрику
+func (h *Handler) GetMetric(c echo.Context) error {
 	var requestMetric serviceModels.RequestMetric
 	err := c.Bind(&requestMetric)
 	if err != nil {
@@ -53,7 +56,8 @@ func (h *UpdateHandler) GetMetric(c echo.Context) error {
 	return c.HTML(http.StatusOK, value)
 }
 
-func (h *UpdateHandler) GetAllMetric(c echo.Context) error {
+// GetAllMetric получить все метрики
+func (h *Handler) GetAllMetric(c echo.Context) error {
 	html, errEcho := h.Service.GetAllMetricHTML()
 	if errEcho != nil {
 		return errEcho
@@ -62,7 +66,8 @@ func (h *UpdateHandler) GetAllMetric(c echo.Context) error {
 	return c.HTML(http.StatusOK, html)
 }
 
-func (h *UpdateHandler) UpdatesMetric(c echo.Context) error {
+// UpdatesMetric обновить пакет метрик
+func (h *Handler) UpdatesMetric(c echo.Context) error {
 	var requestArrayMetric serviceModels.RequestArrayMetric
 	err := c.Bind(&requestArrayMetric)
 	if err != nil {
@@ -77,7 +82,8 @@ func (h *UpdateHandler) UpdatesMetric(c echo.Context) error {
 	return c.JSON(http.StatusOK, metrics)
 }
 
-func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
+// UpdateMetric обновить метрику
+func (h *Handler) UpdateMetric(c echo.Context) error {
 	var requestMetric serviceModels.RequestMetric
 	err := c.Bind(&requestMetric)
 	if err != nil {
@@ -97,11 +103,13 @@ func (h *UpdateHandler) UpdateMetric(c echo.Context) error {
 	return c.String(http.StatusOK, "")
 }
 
-func (h *UpdateHandler) BadRequest(_ echo.Context) error {
+// BadRequest обработка ошибочных запросов
+func (h *Handler) BadRequest(_ echo.Context) error {
 	return &echo.HTTPError{Code: http.StatusBadRequest, Message: ""}
 }
 
-func (h *UpdateHandler) Ping(c echo.Context) error {
+// Ping just ping
+func (h *Handler) Ping(c echo.Context) error {
 	ctx := context.Background()
 
 	errEcho := h.Service.Ping(ctx)

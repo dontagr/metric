@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/dontagr/metric/internal/server/service/interfaces"
 	"github.com/dontagr/metric/models"
 )
 
@@ -23,7 +24,7 @@ func newMemStorage() *MemStorage {
 	}
 }
 
-func RegisterStoreMem(ms *StoreFactory) {
+func RegisterStoreMem(ms interfaces.IStoreFactory) {
 	ms.SetStory(newMemStorage())
 }
 
