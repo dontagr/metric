@@ -19,10 +19,10 @@ import (
 )
 
 type Service struct {
-	MetricFactory *factory.MetricFactory
 	Store         interfaces.Store
-	HashKey       string
+	MetricFactory *factory.MetricFactory
 	Backup        *backup.Service
+	HashKey       string
 }
 
 func (s *Service) GetMetric(requestMetric serviceModels.RequestMetric) (*models.Metrics, *echo.HTTPError) {

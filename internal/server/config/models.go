@@ -9,9 +9,9 @@ const KEY = "KEY"
 type Config struct {
 	Log        Logging    `json:"Logging"`
 	HTTPServer HTTPServer `json:"HttpServing"`
+	Security   Security   `json:"Security"`
 	Store      Store      `json:"Store"`
 	DataBase   DataBase   `json:"DataBase"`
-	Security   Security   `json:"Security"`
 }
 
 type Security struct {
@@ -32,9 +32,9 @@ type Logging struct {
 }
 
 type Store struct {
-	Interval int    `json:"Interval" env:"STORE_INTERVAL" flag:"i"`
 	FilePath string `json:"FilePath" env:"FILE_STORAGE_PATH" flag:"f"`
 	FileName string `json:"FileName"`
+	Interval int    `json:"Interval" env:"STORE_INTERVAL" flag:"i"`
 	FilePerm uint32 `env-default:"0644"`
 	Restore  bool   `json:"Restore" env:"RESTORE" flag:"r"`
 }

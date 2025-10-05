@@ -12,9 +12,9 @@ import (
 )
 
 type MemStorage struct {
-	mx         sync.RWMutex
 	collection map[string]*models.Metrics
 	name       string
+	mx         sync.RWMutex
 }
 
 func newMemStorage() *MemStorage {

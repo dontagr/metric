@@ -23,8 +23,8 @@ const (
 
 type PgxRetry struct {
 	dbpool   *pgxpool.Pool
-	duration []int
 	log      *zap.SugaredLogger
+	duration []int
 }
 
 func NewPgxRetry(conn *pgxpool.Pool, log *zap.SugaredLogger) *PgxRetry {

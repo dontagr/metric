@@ -15,10 +15,10 @@ import (
 )
 
 type Filer struct {
-	mx       sync.RWMutex
-	filename string
-	perm     uint32
 	log      *zap.SugaredLogger
+	filename string
+	mx       sync.RWMutex
+	perm     uint32
 }
 
 func NewFiler(log *zap.SugaredLogger, cfg *config.Config, event *event.Event, lc fx.Lifecycle) *Filer {

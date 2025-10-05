@@ -11,8 +11,8 @@ import (
 
 func TestCreateApp(t *testing.T) {
 	tests := []struct {
-		name string
 		want fx.Option
+		name string
 	}{
 		{
 			name: "create di",
