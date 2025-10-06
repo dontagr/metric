@@ -20,10 +20,10 @@ func TestMemStorage_SaveMetric(t *testing.T) {
 	}
 	testFloat := 1.18
 	tests := []struct {
-		name   string
 		fields fields
 		args   args
 		want   fields
+		name   string
 	}{
 		{
 			name:   "save test",
@@ -58,10 +58,10 @@ func TestMemStorage_LoadMetric(t *testing.T) {
 	}
 	testFloat := 1.18
 	tests := []struct {
-		name   string
 		fields fields
-		args   args
 		want   *models.Metrics
+		args   args
+		name   string
 	}{
 		{
 			name: "load test",
@@ -91,8 +91,8 @@ func TestMemStorage_LoadMetric(t *testing.T) {
 
 func TestNewMemStorage(t *testing.T) {
 	tests := []struct {
-		name string
 		want *MemStorage
+		name string
 	}{
 		{
 			name: "test storage",

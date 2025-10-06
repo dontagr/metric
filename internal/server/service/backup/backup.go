@@ -12,10 +12,10 @@ import (
 )
 
 type Service struct {
-	IsDirectBackup bool
 	Store          interfaces.Store
 	Event          *event.Event
 	log            *zap.SugaredLogger
+	IsDirectBackup bool
 }
 
 func (s *Service) Process() {

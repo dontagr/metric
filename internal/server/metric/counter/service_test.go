@@ -15,8 +15,8 @@ func TestRegisterMetric(t *testing.T) {
 		mf *factory.MetricFactory
 	}
 	tests := []struct {
-		name string
 		args args
+		name string
 	}{
 		{
 			name: "еще один тест ((",
@@ -70,11 +70,11 @@ func TestMetric_ConvertToMetrics(t *testing.T) {
 	}
 	testInt := int64(118)
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
 		want    *models.Metrics
 		wantErr assert.ErrorAssertionFunc
+		args    args
+		name    string
+		fields  fields
 	}{
 		{
 			name: "test convert",
@@ -141,10 +141,10 @@ func TestMetric_Process(t *testing.T) {
 	}
 	testInt := int64(118)
 	tests := []struct {
-		name    string
-		fields  fields
 		args    args
 		wantErr assert.ErrorAssertionFunc
+		name    string
+		fields  fields
 		want    int64
 	}{
 		{

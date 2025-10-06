@@ -21,12 +21,12 @@ import (
 )
 
 type Sender struct {
+	model     ModelInterface
+	transport transport.Transport
 	cfg       *config.Config
 	stats     *service.Stats
 	log       *zap.SugaredLogger
-	model     ModelInterface
 	workers   int
-	transport transport.Transport
 }
 
 func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle, transport *transport.HTTPManager) *Sender {
