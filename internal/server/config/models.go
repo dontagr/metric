@@ -10,8 +10,8 @@ type Config struct {
 	Log        Logging    `json:"Logging"`
 	HTTPServer HTTPServer `json:"HttpServing"`
 	Security   Security   `json:"Security"`
-	Store      Store      `json:"Store"`
 	DataBase   DataBase   `json:"DataBase"`
+	Store      Store      `json:"Store"`
 }
 
 type Security struct {

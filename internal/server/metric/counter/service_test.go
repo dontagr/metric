@@ -271,16 +271,16 @@ func TestMetric_GetMetricsByData(t *testing.T) {
 		name string
 	}
 	type args struct {
-		id    string
 		value any
+		id    string
 	}
 	testInt := int64(150)
 	tests := []struct {
-		name    string
-		fields  fields
 		args    args
 		want    *models.Metrics
 		wantErr assert.ErrorAssertionFunc
+		name    string
+		fields  fields
 	}{
 		{
 			name: "Valid Counter with int64 value",

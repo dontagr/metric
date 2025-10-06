@@ -104,11 +104,11 @@ func TestConfig_ReadFromEnv(t *testing.T) {
 		DefaultFileNames []string
 	}
 	tests := []struct {
+		envVars map[string]string
+		want    EnvConfig
 		name    string
 		fields  fields
-		envVars map[string]string
 		wantErr bool
-		want    EnvConfig
 	}{
 		{
 			name: "Переменные окружения установлены",
@@ -231,11 +231,11 @@ func TestConfig_Validate(t *testing.T) {
 func TestConfig_getConfigFile(t *testing.T) {
 	type fields struct {
 		Data             interface{}
+		EnvFilePaths     string
+		EnvFileNames     string
 		DefaultFilePaths []string
 		DefaultFileNames []string
 		EnvSet           bool
-		EnvFilePaths     string
-		EnvFileNames     string
 	}
 	tests := []struct {
 		name   string

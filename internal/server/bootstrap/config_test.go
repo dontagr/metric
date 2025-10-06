@@ -12,10 +12,10 @@ type callbackFunc func(t *testing.T, fileName string)
 
 func Test_newConfig(t *testing.T) {
 	tests := []struct {
-		name        string
 		fnc         callbackFunc
-		cnfFileName string
 		want        *server.Config
+		name        string
+		cnfFileName string
 		wantErr     bool
 	}{
 		{

@@ -15,8 +15,8 @@ func Test_newLogger(t *testing.T) {
 		cnf *server.Config
 	}
 	tests := []struct {
-		name    string
 		args    args
+		name    string
 		wantErr bool
 	}{
 		{
