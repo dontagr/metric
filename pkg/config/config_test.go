@@ -15,12 +15,12 @@ var (
 
 type ConfigTest struct {
 	Service     Service     `json:"service"`
-	HttpServing HttpServing `json:"httpServing"`
+	HTTPServing HTTPServing `json:"httpServing"`
 }
 type Service struct {
 	Branch string
 }
-type HttpServing struct {
+type HTTPServing struct {
 	DebugBindAddress string `json:"debugBindAddress" validate:"required"`
 }
 
@@ -184,7 +184,7 @@ func TestConfig_Validate(t *testing.T) {
 			name: "valid config",
 			fields: fields{
 				Data: &ConfigTest{
-					HttpServing: HttpServing{
+					HTTPServing: HTTPServing{
 						DebugBindAddress: ":8084",
 					},
 				},
@@ -203,10 +203,10 @@ func TestConfig_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "missing HttpServing",
+			name: "missing HTTPServing",
 			fields: fields{
 				Data: &ConfigTest{
-					HttpServing: HttpServing{},
+					HTTPServing: HTTPServing{},
 				},
 				DefaultFilePaths: DefaultFilePaths,
 				DefaultFileNames: DefaultFileNames,
