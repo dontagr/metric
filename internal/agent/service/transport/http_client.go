@@ -14,9 +14,9 @@ import (
 )
 
 type HTTPManager struct {
-	url    string
 	client *http.Client
 	log    *zap.SugaredLogger
+	url    string
 }
 
 func NewHTTPManager(cfg *config.Config, log *zap.SugaredLogger) *HTTPManager {

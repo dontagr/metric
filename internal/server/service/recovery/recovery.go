@@ -17,8 +17,8 @@ import (
 type Recovery struct {
 	store       interfaces.Store
 	filer       *store.Filer
-	autoRestore bool
 	log         *zap.SugaredLogger
+	autoRestore bool
 }
 
 func NewRecovery(log *zap.SugaredLogger, sf interfaces.IStoreFactory, filer *store.Filer, cfg *config.Config, lc fx.Lifecycle) (*Recovery, error) {

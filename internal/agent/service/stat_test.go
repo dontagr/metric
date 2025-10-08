@@ -9,8 +9,8 @@ import (
 
 func TestNewStats(t *testing.T) {
 	tests := []struct {
-		name string
 		want *Stats
+		name string
 	}{
 		{
 			name: "проверка структуры",

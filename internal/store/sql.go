@@ -42,10 +42,10 @@ const (
 )
 
 type pg struct {
-	mx     sync.RWMutex
 	dbpool *pgretry.PgxRetry
-	name   string
 	log    *zap.SugaredLogger
+	name   string
+	mx     sync.RWMutex
 }
 
 func RegisterStorePG(log *zap.SugaredLogger, ms interfaces.IStoreFactory, dbpool *pgretry.PgxRetry, lc fx.Lifecycle) {
