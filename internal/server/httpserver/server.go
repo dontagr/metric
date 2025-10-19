@@ -19,7 +19,6 @@ type HTTPServer struct {
 func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shutdowner fx.Shutdowner) *HTTPServer {
 	mainServer := echo.New()
 
-	mainServer.Use(Decrypted(cfg.Security.Key))
 	mainServer.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:          true,
 		LogMethod:       true,
@@ -39,6 +38,7 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 			return nil
 		},
 	}))
+	mainServer.Use(Decrypted(cfg.Security.Key))
 	mainServer.Use(middleware.Decompress())
 	mainServer.Use(middleware.Gzip())
 

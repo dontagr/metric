@@ -87,6 +87,10 @@ func (s *Sender) worker(w int, jobs chan any) {
 		}
 
 		cryptoBody, err := s.crypto(compressedBody)
+		if err != nil {
+			s.log.Errorf("worker %d crypto: %v", w, err)
+			continue
+		}
 
 		HashSHA256 := make([]string, 0, 1)
 		if s.cfg.Security.Key != "" {
@@ -152,11 +156,6 @@ func (s *Sender) crypto(body *bytes.Buffer) (*bytes.Buffer, error) {
 	publicKey, err := x509.ParsePKIXPublicKey(publicKeyBlock.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to ParsePKIXPublicKey: %v", err)
-	}
-
-	publicKey, err = parseRSAPublicKeyFromPEM([]byte(s.cfg.Security.CryptoKey))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse RSA public key: %v", err)
 	}
 
 	encryptedBytes, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, publicKey.(*rsa.PublicKey), body.Bytes(), nil)
@@ -258,7 +257,7 @@ func parseRSAPublicKeyFromPEM(pemBytes []byte) (*rsa.PublicKey, error) {
 
 	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse DER encoded public key: " + err.Error())
+		return nil, fmt.Errorf("failed to parse DER encoded public key: %v", err)
 	}
 
 	pub, ok := pubInterface.(*rsa.PublicKey)
