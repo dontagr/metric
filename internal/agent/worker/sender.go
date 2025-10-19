@@ -4,8 +4,15 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"os"
 	"reflect"
 	"time"
 
@@ -79,6 +86,8 @@ func (s *Sender) worker(w int, jobs chan any) {
 			continue
 		}
 
+		cryptoBody, err := s.crypto(compressedBody)
+
 		HashSHA256 := make([]string, 0, 1)
 		if s.cfg.Security.Key != "" {
 			outHash := make(chan string)
@@ -88,7 +97,7 @@ func (s *Sender) worker(w int, jobs chan any) {
 			}
 		}
 
-		err = s.transport.NewRequest(compressedBody, HashSHA256, w)
+		err = s.transport.NewRequest(cryptoBody, HashSHA256, w)
 		if err != nil {
 			s.log.Errorf("worker %d: %v", w, err)
 		}
@@ -128,6 +137,34 @@ func (s *Sender) GetHash(row any, outHash chan<- string) {
 		outHash <- v.Hash
 		return
 	}
+}
+
+func (s *Sender) crypto(body *bytes.Buffer) (*bytes.Buffer, error) {
+	if s.cfg.Security.CryptoKey == "" {
+		return body, nil
+	}
+	publicKeyPEM, err := os.ReadFile(s.cfg.Security.CryptoKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read PEM file: %v", err)
+	}
+
+	publicKeyBlock, _ := pem.Decode(publicKeyPEM)
+	publicKey, err := x509.ParsePKIXPublicKey(publicKeyBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ParsePKIXPublicKey: %v", err)
+	}
+
+	publicKey, err = parseRSAPublicKeyFromPEM([]byte(s.cfg.Security.CryptoKey))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse RSA public key: %v", err)
+	}
+
+	encryptedBytes, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, publicKey.(*rsa.PublicKey), body.Bytes(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("rsa.EncryptOAEP: %v", err)
+	}
+
+	return bytes.NewBuffer([]byte(base64.StdEncoding.EncodeToString(encryptedBytes))), nil
 }
 
 func (s *Sender) compress(body *bytes.Buffer) (*bytes.Buffer, error) {
@@ -211,4 +248,23 @@ func (s *Sender) getCounterModel(mType string, index string, val reflect.Value) 
 		MType: mType,
 		Delta: &value,
 	}, nil
+}
+
+func parseRSAPublicKeyFromPEM(pemBytes []byte) (*rsa.PublicKey, error) {
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block containing public key")
+	}
+
+	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse DER encoded public key: " + err.Error())
+	}
+
+	pub, ok := pubInterface.(*rsa.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("not an RSA public key")
+	}
+
+	return pub, nil
 }

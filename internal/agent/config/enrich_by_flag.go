@@ -20,6 +20,7 @@ func (f *FlagEnricher) Process(cnf *Config) error {
 	pollInterval := flagSet.Int("p", 0, "poll interval value in sec")
 	key := flagSet.String("k", "", "key for encode with SHA256")
 	rateLimit := flagSet.Int("l", 0, "number of simultaneously outgoing requests to the server")
+	cryptoKey := flagSet.String("crypto-key", "", "crypto-key for public")
 
 	err := flagSet.Parse(os.Args[1:])
 	if err != nil {
@@ -39,6 +40,9 @@ func (f *FlagEnricher) Process(cnf *Config) error {
 	}
 	if *rateLimit != 0 {
 		cnf.RateLimit = *rateLimit
+	}
+	if *cryptoKey != "" {
+		cnf.Security.CryptoKey = *cryptoKey
 	}
 
 	return nil

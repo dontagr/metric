@@ -5,6 +5,7 @@ const EnvFileStoragePath = "FILE_STORAGE_PATH"
 const EnvRestore = "RESTORE"
 const DatabaseDsn = "DATABASE_DSN"
 const KEY = "KEY"
+const CryptoKey = "CRYPTO_KEY"
 
 type Config struct {
 	Log        Logging    `json:"Logging"`
@@ -15,7 +16,8 @@ type Config struct {
 }
 
 type Security struct {
-	Key string `json:"HashKey" env:"KEY"`
+	Key       string `json:"HashKey" env:"KEY"`
+	CryptoKey string `json:"CryptoKey" env:"CRYPTO_KEY"`
 }
 
 type DataBase struct {

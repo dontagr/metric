@@ -10,7 +10,8 @@ type Config struct {
 }
 
 type Security struct {
-	Key string `json:"HashKey" env:"KEY"`
+	Key       string `json:"HashKey" env:"KEY"`
+	CryptoKey string `json:"CryptoKey" env:"CRYPTO_KEY"`
 }
 
 type Logging struct {

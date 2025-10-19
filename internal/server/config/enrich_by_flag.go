@@ -21,6 +21,7 @@ func (f *FlagEnricher) Process(cnf *Config) error {
 	storeRestore := flagSet.Bool("r", true, "load previously saved values for not for store")
 	databaseDsn := flagSet.String("d", "", "string with the database connection address")
 	key := flagSet.String("k", "", "key for encode with SHA256")
+	cryptoKey := flagSet.String("crypto-key", "", "crypto-key for public")
 
 	err := flagSet.Parse(os.Args[1:])
 	if err != nil {
@@ -55,6 +56,11 @@ func (f *FlagEnricher) Process(cnf *Config) error {
 	_, exists = os.LookupEnv(KEY)
 	if !exists {
 		cnf.Security.Key = *key
+	}
+
+	_, exists = os.LookupEnv(CryptoKey)
+	if !exists {
+		cnf.Security.CryptoKey = *cryptoKey
 	}
 
 	return nil
