@@ -17,6 +17,10 @@ import (
 func Decrypted(pathPrivateKey string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if pathPrivateKey == "" {
+				return next(c)
+			}
+
 			bodyBytes, err := io.ReadAll(c.Request().Body)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusInternalServerError, "cannot read request body")
