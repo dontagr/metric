@@ -5,38 +5,33 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"crypto/x509"
-	"encoding/pem"
+	"encoding/base64"
+	"fmt"
+	"hash"
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/labstack/echo/v4"
 )
 
-func Decrypted(pathPrivateKey string) echo.MiddlewareFunc {
+func Decrypted(privateKey *rsa.PrivateKey) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if pathPrivateKey == "" {
+			if privateKey == nil {
 				return next(c)
 			}
 
 			bodyBytes, err := io.ReadAll(c.Request().Body)
 			if err != nil {
-				return echo.NewHTTPError(http.StatusInternalServerError, "cannot read request body")
+				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("cannot read request body: %v", err))
 			}
 
-			privateKeyPEM, err := os.ReadFile(pathPrivateKey)
+			data, err := base64.StdEncoding.DecodeString(string(bodyBytes))
 			if err != nil {
-				panic(err)
-			}
-			privateKeyBlock, _ := pem.Decode(privateKeyPEM)
-			privateKey, err := x509.ParsePKCS1PrivateKey(privateKeyBlock.Bytes)
-			if err != nil {
-				panic(err)
+				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("cannot decode base64: %v", err))
 			}
 
-			encryptedBytes, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, bodyBytes, nil)
+			encryptedBytes, err := decryptOAEP(sha256.New(), rand.Reader, privateKey, data, nil)
 			if err != nil {
 				panic(err)
 			}
@@ -46,4 +41,26 @@ func Decrypted(pathPrivateKey string) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
+}
+
+func decryptOAEP(hash hash.Hash, random io.Reader, private *rsa.PrivateKey, msg []byte, label []byte) ([]byte, error) {
+	msgLen := len(msg)
+	step := private.PublicKey.Size()
+	var decryptedBytes []byte
+
+	for start := 0; start < msgLen; start += step {
+		finish := start + step
+		if finish > msgLen {
+			finish = msgLen
+		}
+
+		decryptedBlockBytes, err := rsa.DecryptOAEP(hash, random, private, msg[start:finish], label)
+		if err != nil {
+			return nil, err
+		}
+
+		decryptedBytes = append(decryptedBytes, decryptedBlockBytes...)
+	}
+
+	return decryptedBytes, nil
 }

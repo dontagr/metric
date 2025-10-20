@@ -2,7 +2,12 @@ package httpserver
 
 import (
 	"context"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -16,7 +21,7 @@ type HTTPServer struct {
 	Master *echo.Echo
 }
 
-func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shutdowner fx.Shutdowner) *HTTPServer {
+func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shutdowner fx.Shutdowner) (*HTTPServer, error) {
 	mainServer := echo.New()
 
 	mainServer.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
@@ -38,7 +43,25 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 			return nil
 		},
 	}))
-	mainServer.Use(Decrypted(cfg.Security.Key))
+
+	var privateKey *rsa.PrivateKey
+	log.Infow("======")
+	log.Infow(cfg.Security.CryptoKey)
+	log.Infow("======")
+	if cfg.Security.CryptoKey != "" {
+
+		privateKeyPEM, err := os.ReadFile(cfg.Security.CryptoKey)
+		if err != nil {
+			return nil, fmt.Errorf("privateKey ReadFile: %v", err)
+		}
+		privateKeyBlock, _ := pem.Decode(privateKeyPEM)
+		privateKey, err = x509.ParsePKCS1PrivateKey(privateKeyBlock.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("ParsePKCS1PrivateKey: %v", err)
+		}
+	}
+
+	mainServer.Use(Decrypted(privateKey))
 	mainServer.Use(middleware.Decompress())
 	mainServer.Use(middleware.Gzip())
 
@@ -60,5 +83,5 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 
 	return &HTTPServer{
 		Master: mainServer,
-	}
+	}, nil
 }

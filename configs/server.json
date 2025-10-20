@@ -15,6 +15,7 @@
     "DatabaseDsn": "postgres://postgres:postgres@localhost:5432/metrics"
   },
   "Security": {
-    "Key": "test"
+    "Key": "test",
+    "CryptoKey": "/Users/sastepo1/.ssh/jwtRS256.key"
   }
 }

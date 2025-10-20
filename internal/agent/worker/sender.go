@@ -12,6 +12,8 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	hash2 "hash"
+	"io"
 	"os"
 	"reflect"
 	"time"
@@ -34,14 +36,32 @@ type Sender struct {
 	stats     *service.Stats
 	log       *zap.SugaredLogger
 	workers   int
+	publicKey *rsa.PublicKey
 }
 
-func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle, transport *transport.HTTPManager) *Sender {
+func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle, transport *transport.HTTPManager) (*Sender, error) {
 	s := &Sender{
 		cfg:       cfg,
 		stats:     stats,
 		log:       log,
 		transport: transport,
+	}
+
+	if s.cfg.Security.CryptoKey != "" {
+		publicKeyData, err := os.ReadFile(s.cfg.Security.CryptoKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read PEM file: %v", err)
+		}
+
+		publicKeyAny, err := parseRSAPublicKeyFromPEM(publicKeyData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse public key: %v", err)
+		}
+
+		var ok bool
+		if s.publicKey, ok = publicKeyAny.(*rsa.PublicKey); !ok {
+			return nil, fmt.Errorf("not an RSA public key")
+		}
 	}
 
 	if s.cfg.RateLimit == 0 {
@@ -62,7 +82,7 @@ func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats,
 		},
 	})
 
-	return s
+	return s, nil
 }
 
 type (
@@ -147,23 +167,48 @@ func (s *Sender) crypto(body *bytes.Buffer) (*bytes.Buffer, error) {
 	if s.cfg.Security.CryptoKey == "" {
 		return body, nil
 	}
-	publicKeyPEM, err := os.ReadFile(s.cfg.Security.CryptoKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read PEM file: %v", err)
-	}
 
-	publicKeyBlock, _ := pem.Decode(publicKeyPEM)
-	publicKey, err := x509.ParsePKIXPublicKey(publicKeyBlock.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to ParsePKIXPublicKey: %v", err)
-	}
-
-	encryptedBytes, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, publicKey.(*rsa.PublicKey), body.Bytes(), nil)
+	encryptedBytes, err := encryptOAEP(sha256.New(), rand.Reader, s.publicKey, body.Bytes(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("rsa.EncryptOAEP: %v", err)
 	}
 
 	return bytes.NewBuffer([]byte(base64.StdEncoding.EncodeToString(encryptedBytes))), nil
+}
+
+func encryptOAEP(hash hash2.Hash, random io.Reader, public *rsa.PublicKey, msg []byte, label []byte) ([]byte, error) {
+	msgLen := len(msg)
+	step := public.Size() - 2*hash.Size() - 2
+	var encryptedBytes []byte
+
+	for start := 0; start < msgLen; start += step {
+		finish := start + step
+		if finish > msgLen {
+			finish = msgLen
+		}
+
+		encryptedBlockBytes, err := rsa.EncryptOAEP(hash, random, public, msg[start:finish], label)
+		if err != nil {
+			return nil, err
+		}
+
+		encryptedBytes = append(encryptedBytes, encryptedBlockBytes...)
+	}
+
+	return encryptedBytes, nil
+}
+
+func parseRSAPublicKeyFromPEM(pemBytes []byte) (any, error) {
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block containing public key")
+	}
+
+	if block.Type != "RSA PUBLIC KEY" {
+		return nil, fmt.Errorf("unsupported PEM block type: %s", block.Type)
+	}
+
+	return x509.ParsePKCS1PublicKey(block.Bytes)
 }
 
 func (s *Sender) compress(body *bytes.Buffer) (*bytes.Buffer, error) {
@@ -247,23 +292,4 @@ func (s *Sender) getCounterModel(mType string, index string, val reflect.Value) 
 		MType: mType,
 		Delta: &value,
 	}, nil
-}
-
-func parseRSAPublicKeyFromPEM(pemBytes []byte) (*rsa.PublicKey, error) {
-	block, _ := pem.Decode(pemBytes)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block containing public key")
-	}
-
-	pubInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse DER encoded public key: %v", err)
-	}
-
-	pub, ok := pubInterface.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("not an RSA public key")
-	}
-
-	return pub, nil
 }

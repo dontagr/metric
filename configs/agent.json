@@ -6,7 +6,8 @@
     "LogLevel": "INFO"
   },
   "Security": {
-    "Key": "test"
+    "Key": "test",
+    "CryptoKey": "/Users/sastepo1/.ssh/jwtRS256.key.pem"
   },
   "RateLimit": 0
 }
