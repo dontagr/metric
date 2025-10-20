@@ -28,14 +28,14 @@ func NewBackupService(log *zap.SugaredLogger, sf interfaces.IStoreFactory, event
 	s := Service{
 		Store:          storage,
 		Event:          event,
-		IsDirectBackup: cnf.Store.Interval == 0,
+		IsDirectBackup: cnf.Interval == 0,
 	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
 			if !s.IsDirectBackup {
-				go s.autoBackUp(cnf.Store.Interval, log)
-				log.Infof("Метрики бэкапятся каждые %v секунд", cnf.Store.Interval)
+				go s.autoBackUp(cnf.Interval, log)
+				log.Infof("Метрики бэкапятся каждые %v секунд", cnf.Interval)
 			} else {
 				log.Info("Метрики бэкапятся при получении")
 			}

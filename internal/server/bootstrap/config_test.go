@@ -23,25 +23,22 @@ func Test_newConfig(t *testing.T) {
 			fnc:         setEnv,
 			cnfFileName: "server.json",
 			want: &server.Config{
-				HTTPServer: server.HTTPServer{
-					BindAddress: ":8080",
-				},
+				HTTPServer: ":8080",
 				Log: server.Logging{
 					LogLevel: "INFO",
 				},
+				Interval: 0,
+				FileName: "bochenok_s_medom",
+				FilePath: "./",
+				Restore:  true,
 				Store: server.Store{
-					Interval: 0,
-					FileName: "bochenok_s_medom",
-					FilePath: "./",
-					Restore:  true,
 					FilePerm: 420,
 				},
-				DataBase: server.DataBase{
-					DatabaseDsn: "postgres://postgres:postgres@localhost:5432/metrics",
-				},
+				DatabaseDsn: "postgres://postgres:postgres@localhost:5432/metrics",
 				Security: server.Security{
 					Key: "",
 				},
+				CryptoKey: "/Users/sastepo1/.ssh/jwtRS256.key",
 			},
 			wantErr: false,
 		},

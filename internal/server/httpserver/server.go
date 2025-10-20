@@ -45,12 +45,9 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 	}))
 
 	var privateKey *rsa.PrivateKey
-	log.Infow("======")
-	log.Infow(cfg.Security.CryptoKey)
-	log.Infow("======")
-	if cfg.Security.CryptoKey != "" {
+	if cfg.CryptoKey != "" {
 
-		privateKeyPEM, err := os.ReadFile(cfg.Security.CryptoKey)
+		privateKeyPEM, err := os.ReadFile(cfg.CryptoKey)
 		if err != nil {
 			return nil, fmt.Errorf("privateKey ReadFile: %v", err)
 		}
@@ -67,9 +64,9 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			log.Infof("starting HTTP server. Bind: %s", cfg.HTTPServer.BindAddress)
+			log.Infof("starting HTTP server. Bind: %s", cfg.HTTPServer)
 			go func() {
-				if err := mainServer.Start(cfg.HTTPServer.BindAddress); err != nil && err != http.ErrServerClosed {
+				if err := mainServer.Start(cfg.HTTPServer); err != nil && err != http.ErrServerClosed {
 					log.Errorf("failed to start HTTP Server: %v", err)
 					_ = shutdowner.Shutdown()
 				}

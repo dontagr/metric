@@ -47,8 +47,8 @@ func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats,
 		transport: transport,
 	}
 
-	if s.cfg.Security.CryptoKey != "" {
-		publicKeyData, err := os.ReadFile(s.cfg.Security.CryptoKey)
+	if s.cfg.CryptoKey != "" {
+		publicKeyData, err := os.ReadFile(s.cfg.CryptoKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read PEM file: %v", err)
 		}
@@ -164,7 +164,7 @@ func (s *Sender) GetHash(row any, outHash chan<- string) {
 }
 
 func (s *Sender) crypto(body *bytes.Buffer) (*bytes.Buffer, error) {
-	if s.cfg.Security.CryptoKey == "" {
+	if s.publicKey == nil {
 		return body, nil
 	}
 

@@ -1,13 +1,13 @@
 {
-  "PollInterval": 2,
-  "ReportInterval": 10,
-  "HTTPBindAddress": "localhost:8080",
+  "poll_interval": 2,
+  "report_interval": 10,
+  "address": "localhost:8080",
+  "crypto_key": "/Users/sastepo1/.ssh/jwtRS256.key.pem",
   "Logging": {
     "LogLevel": "INFO"
   },
   "Security": {
-    "Key": "test",
-    "CryptoKey": "/Users/sastepo1/.ssh/jwtRS256.key.pem"
+    "Key": "test"
   },
   "RateLimit": 0
 }

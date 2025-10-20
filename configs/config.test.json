@@ -2,7 +2,5 @@
     "service": {
         "branch": "test"
     },
-    "httpServing": {
-        "debugBindAddress": ":8084"
-    }
+    "httpServing": ":8084"
 }

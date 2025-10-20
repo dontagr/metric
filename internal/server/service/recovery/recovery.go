@@ -37,7 +37,7 @@ func NewRecovery(log *zap.SugaredLogger, sf interfaces.IStoreFactory, filer *sto
 	r := Recovery{
 		store:       storage,
 		filer:       filer,
-		autoRestore: cfg.Store.Restore,
+		autoRestore: cfg.Restore,
 		log:         log,
 	}
 	lc.Append(fx.Hook{
