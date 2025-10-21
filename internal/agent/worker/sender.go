@@ -16,6 +16,7 @@ import (
 	"io"
 	"os"
 	"reflect"
+	"sync"
 	"time"
 
 	"go.uber.org/fx"
@@ -37,6 +38,8 @@ type Sender struct {
 	log       *zap.SugaredLogger
 	workers   int
 	publicKey *rsa.PublicKey
+	workerWG  sync.WaitGroup
+	exitChan  chan bool
 }
 
 func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle, transport *transport.HTTPManager) (*Sender, error) {
@@ -45,6 +48,7 @@ func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats,
 		stats:     stats,
 		log:       log,
 		transport: transport,
+		exitChan:  make(chan bool, 1),
 	}
 
 	if s.cfg.CryptoKey != "" {
@@ -80,6 +84,14 @@ func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats,
 
 			return nil
 		},
+		OnStop: func(ctx context.Context) error {
+			s.log.Infof("Получен сигнал для завершения работы. Жду оканчания отправки.")
+			s.exitChan <- true
+			s.workerWG.Wait()
+			s.log.Infof("Завершение...")
+
+			return nil
+		},
 	})
 
 	return s, nil
@@ -94,21 +106,31 @@ type (
 func (s *Sender) worker(w int, jobs chan any) {
 	s.log.Infof("worker %d runing", w)
 	for row := range jobs {
+		select {
+		case <-s.exitChan:
+			return
+		default:
+		}
+
+		s.workerWG.Add(1)
 		body, err := s.getBody(row)
 		if err != nil {
 			s.log.Errorf("worker %d get body: %v", w, err)
+			s.workerWG.Done()
 			break
 		}
 
 		compressedBody, err := s.compress(body)
 		if err != nil {
 			s.log.Errorf("worker %d compress: %v", w, err)
+			s.workerWG.Done()
 			continue
 		}
 
 		cryptoBody, err := s.crypto(compressedBody)
 		if err != nil {
 			s.log.Errorf("worker %d crypto: %v", w, err)
+			s.workerWG.Done()
 			continue
 		}
 
@@ -125,6 +147,7 @@ func (s *Sender) worker(w int, jobs chan any) {
 		if err != nil {
 			s.log.Errorf("worker %d: %v", w, err)
 		}
+		s.workerWG.Done()
 	}
 }
 

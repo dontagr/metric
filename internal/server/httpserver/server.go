@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -24,6 +25,8 @@ type HTTPServer struct {
 func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shutdowner fx.Shutdowner) (*HTTPServer, error) {
 	mainServer := echo.New()
 
+	workerWG := sync.WaitGroup{}
+	mainServer.Use(middlewareShutdowner(&workerWG))
 	mainServer.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:          true,
 		LogMethod:       true,
@@ -58,7 +61,7 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 		}
 	}
 
-	mainServer.Use(Decrypted(privateKey))
+	mainServer.Use(middlewareDecrypted(privateKey))
 	mainServer.Use(middleware.Decompress())
 	mainServer.Use(middleware.Gzip())
 
@@ -74,6 +77,10 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
+			log.Infof("Получен сигнал для завершения работы. Жду оканчания отправки.")
+			workerWG.Wait()
+
+			log.Infof("Завершение...")
 			return mainServer.Shutdown(ctx)
 		},
 	})

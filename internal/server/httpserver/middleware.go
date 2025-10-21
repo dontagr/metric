@@ -10,11 +10,24 @@ import (
 	"hash"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/labstack/echo/v4"
 )
 
-func Decrypted(privateKey *rsa.PrivateKey) echo.MiddlewareFunc {
+func middlewareShutdowner(wg *sync.WaitGroup) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			defer wg.Done()
+			wg.Add(1)
+
+			return next(c)
+		}
+	}
+
+}
+
+func middlewareDecrypted(privateKey *rsa.PrivateKey) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if privateKey == nil {
