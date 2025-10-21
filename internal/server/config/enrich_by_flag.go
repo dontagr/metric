@@ -21,7 +21,9 @@ type FlagEnricher struct {
 }
 
 func (f *FlagEnricher) GetFilePathAndName(paths []string, names []string) ([]string, []string) {
-	if *configShort != "" {
+	if configShort == nil {
+		return paths, names
+	} else if *configShort != "" {
 		names = append(names, *configShort)
 	} else if *config != "" {
 		names = append(names, *config)
@@ -32,6 +34,7 @@ func (f *FlagEnricher) GetFilePathAndName(paths []string, names []string) ([]str
 	return paths, names
 }
 func (f *FlagEnricher) Init(cnf *Config) error {
+
 	flagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	flagSet.SetOutput(os.Stderr)
 	flagSet.Usage = cleanenv.FUsage(flagSet.Output(), cnf, nil, flagSet.Usage)

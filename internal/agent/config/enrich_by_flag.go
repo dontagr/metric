@@ -22,7 +22,9 @@ type FlagEnricher struct {
 }
 
 func (f *FlagEnricher) GetFilePathAndName(paths []string, names []string) ([]string, []string) {
-	if *configShort != "" {
+	if configShort == nil {
+		return paths, names
+	} else if *configShort != "" {
 		names = append(names, *configShort)
 	} else if *config != "" {
 		names = append(names, *config)
