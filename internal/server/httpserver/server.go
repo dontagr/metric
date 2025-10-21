@@ -80,7 +80,7 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 			log.Infof("Получен сигнал для завершения работы. Жду оканчания отправки.")
 			workerWG.Wait()
 
-			log.Infof("Завершение...")
+			log.Infof("Завершение.")
 			return mainServer.Shutdown(ctx)
 		},
 	})
