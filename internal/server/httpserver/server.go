@@ -2,12 +2,8 @@ package httpserver
 
 import (
 	"context"
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"net/http"
-	"os"
 	"sync"
 
 	"github.com/labstack/echo/v4"
@@ -16,13 +12,14 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/server/config"
+	crypro "github.com/dontagr/metric/pkg/crypto"
 )
 
 type HTTPServer struct {
 	Master *echo.Echo
 }
 
-func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shutdowner fx.Shutdowner) (*HTTPServer, error) {
+func NewServer(cfg *config.Config, cmanager *crypro.CManager, log *zap.SugaredLogger, lc fx.Lifecycle, shutdowner fx.Shutdowner) (*HTTPServer, error) {
 	mainServer := echo.New()
 
 	workerWG := sync.WaitGroup{}
@@ -47,21 +44,11 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 		},
 	}))
 
-	var privateKey *rsa.PrivateKey
-	if cfg.CryptoKey != "" {
-
-		privateKeyPEM, err := os.ReadFile(cfg.CryptoKey)
-		if err != nil {
-			return nil, fmt.Errorf("privateKey ReadFile: %v", err)
-		}
-		privateKeyBlock, _ := pem.Decode(privateKeyPEM)
-		privateKey, err = x509.ParsePKCS1PrivateKey(privateKeyBlock.Bytes)
-		if err != nil {
-			return nil, fmt.Errorf("ParsePKCS1PrivateKey: %v", err)
-		}
+	err := cmanager.InitPrivateKey(cfg.CryptoKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed init private key: %v", err)
 	}
-
-	mainServer.Use(middlewareDecrypted(privateKey))
+	mainServer.Use(middlewareDecrypted(cmanager))
 	mainServer.Use(middleware.Decompress())
 	mainServer.Use(middleware.Gzip())
 

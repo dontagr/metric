@@ -2,17 +2,14 @@ package httpserver
 
 import (
 	"bytes"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
-	"hash"
 	"io"
 	"net/http"
 	"sync"
 
 	"github.com/labstack/echo/v4"
+
+	crypro "github.com/dontagr/metric/pkg/crypto"
 )
 
 func middlewareShutdowner(wg *sync.WaitGroup) echo.MiddlewareFunc {
@@ -27,10 +24,10 @@ func middlewareShutdowner(wg *sync.WaitGroup) echo.MiddlewareFunc {
 
 }
 
-func middlewareDecrypted(privateKey *rsa.PrivateKey) echo.MiddlewareFunc {
+func middlewareDecrypted(cmanager *crypro.CManager) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if privateKey == nil {
+			if cmanager.PrivateKey == nil {
 				return next(c)
 			}
 
@@ -39,14 +36,9 @@ func middlewareDecrypted(privateKey *rsa.PrivateKey) echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("cannot read request body: %v", err))
 			}
 
-			data, err := base64.StdEncoding.DecodeString(string(bodyBytes))
+			encryptedBytes, err := cmanager.Decrypt(bodyBytes)
 			if err != nil {
 				return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("cannot decode base64: %v", err))
-			}
-
-			encryptedBytes, err := decryptOAEP(sha256.New(), rand.Reader, privateKey, data, nil)
-			if err != nil {
-				panic(err)
 			}
 
 			c.Request().Body = io.NopCloser(bytes.NewReader(encryptedBytes))
@@ -54,26 +46,4 @@ func middlewareDecrypted(privateKey *rsa.PrivateKey) echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
-}
-
-func decryptOAEP(hash hash.Hash, random io.Reader, private *rsa.PrivateKey, msg []byte, label []byte) ([]byte, error) {
-	msgLen := len(msg)
-	step := private.PublicKey.Size()
-	var decryptedBytes []byte
-
-	for start := 0; start < msgLen; start += step {
-		finish := start + step
-		if finish > msgLen {
-			finish = msgLen
-		}
-
-		decryptedBlockBytes, err := rsa.DecryptOAEP(hash, random, private, msg[start:finish], label)
-		if err != nil {
-			return nil, err
-		}
-
-		decryptedBytes = append(decryptedBytes, decryptedBlockBytes...)
-	}
-
-	return decryptedBytes, nil
 }

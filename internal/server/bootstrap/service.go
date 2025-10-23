@@ -11,6 +11,7 @@ import (
 	"github.com/dontagr/metric/internal/server/service/event"
 	"github.com/dontagr/metric/internal/server/service/interfaces"
 	"github.com/dontagr/metric/internal/server/service/recovery"
+	crypro "github.com/dontagr/metric/pkg/crypto"
 )
 
 var Service = fx.Options(
@@ -23,6 +24,7 @@ var Service = fx.Options(
 			fx.As(new(interfaces.Service)),
 		),
 		backup.NewBackupService,
+		crypro.NewCManager,
 	),
 	fx.Invoke(
 		counter.RegisterMetric,

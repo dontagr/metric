@@ -4,17 +4,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
-	hash2 "hash"
-	"io"
-	"os"
 	"reflect"
 	"sync"
 	"time"
@@ -26,8 +17,10 @@ import (
 	"github.com/dontagr/metric/internal/agent/converter"
 	"github.com/dontagr/metric/internal/agent/service"
 	"github.com/dontagr/metric/internal/agent/service/transport"
+	"github.com/dontagr/metric/internal/agent/worker/pool"
 	"github.com/dontagr/metric/internal/common/hash"
 	"github.com/dontagr/metric/models"
+	crypro "github.com/dontagr/metric/pkg/crypto"
 )
 
 type Sender struct {
@@ -37,35 +30,35 @@ type Sender struct {
 	stats     *service.Stats
 	log       *zap.SugaredLogger
 	workers   int
-	publicKey *rsa.PublicKey
-	workerWG  sync.WaitGroup
+	workerWG  *sync.WaitGroup
 	exitChan  chan bool
+	wpool     *pool.WPool
+	cmanager  *crypro.CManager
 }
 
-func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle, transport *transport.HTTPManager) (*Sender, error) {
+func NewSender(
+	cfg *config.Config,
+	log *zap.SugaredLogger,
+	stats *service.Stats,
+	cmanager *crypro.CManager,
+	wpool *pool.WPool,
+	lc fx.Lifecycle,
+	transport *transport.HTTPManager,
+) (*Sender, error) {
 	s := &Sender{
 		cfg:       cfg,
 		stats:     stats,
 		log:       log,
 		transport: transport,
 		exitChan:  make(chan bool, 1),
+		workerWG:  wpool.GetWG(),
+		wpool:     wpool,
+		cmanager:  cmanager,
 	}
 
-	if s.cfg.CryptoKey != "" {
-		publicKeyData, err := os.ReadFile(s.cfg.CryptoKey)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read PEM file: %v", err)
-		}
-
-		publicKeyAny, err := parseRSAPublicKeyFromPEM(publicKeyData)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse public key: %v", err)
-		}
-
-		var ok bool
-		if s.publicKey, ok = publicKeyAny.(*rsa.PublicKey); !ok {
-			return nil, fmt.Errorf("not an RSA public key")
-		}
+	err := cmanager.InitPublicKey(cfg.CryptoKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed init public key: %v", err)
 	}
 
 	if s.cfg.RateLimit == 0 {
@@ -85,7 +78,7 @@ func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats,
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			s.log.Infof("Получен сигнал для завершения работы. Жду оканчания отправки.")
+			s.log.Infof("Получен сигнал для завершения работы. Жду workers.")
 			s.exitChan <- true
 			s.workerWG.Wait()
 			s.log.Infof("Завершение...")
@@ -103,69 +96,58 @@ type (
 	}
 )
 
-func (s *Sender) worker(w int, jobs chan any) {
-	s.log.Infof("worker %d runing", w)
-	for row := range jobs {
-		select {
-		case <-s.exitChan:
-			return
-		default:
-		}
+func (s *Sender) processJob(w int, row any) {
+	body, err := s.getBody(row)
+	if err != nil {
+		s.log.Errorf("worker %d get body: %v", w, err)
+		return
+	}
 
-		s.workerWG.Add(1)
-		body, err := s.getBody(row)
-		if err != nil {
-			s.log.Errorf("worker %d get body: %v", w, err)
-			s.workerWG.Done()
-			break
-		}
+	compressedBody, err := s.compress(body)
+	if err != nil {
+		s.log.Errorf("worker %d compress: %v", w, err)
+		return
+	}
 
-		compressedBody, err := s.compress(body)
-		if err != nil {
-			s.log.Errorf("worker %d compress: %v", w, err)
-			s.workerWG.Done()
-			continue
-		}
+	cryptoBody, err := s.cmanager.Encrypt(compressedBody)
+	if err != nil {
+		s.log.Errorf("worker %d crypto: %v", w, err)
+		return
+	}
 
-		cryptoBody, err := s.crypto(compressedBody)
-		if err != nil {
-			s.log.Errorf("worker %d crypto: %v", w, err)
-			s.workerWG.Done()
-			continue
+	HashSHA256 := make([]string, 0, 1)
+	if s.cfg.Security.Key != "" {
+		outHash := make(chan string)
+		s.GetHash(row, outHash)
+		for hashRow := range outHash {
+			HashSHA256 = append(HashSHA256, hashRow)
 		}
+	}
 
-		HashSHA256 := make([]string, 0, 1)
-		if s.cfg.Security.Key != "" {
-			outHash := make(chan string)
-			s.GetHash(row, outHash)
-			for hashRow := range outHash {
-				HashSHA256 = append(HashSHA256, hashRow)
-			}
-		}
-
-		err = s.transport.NewRequest(cryptoBody, HashSHA256, w)
-		if err != nil {
-			s.log.Errorf("worker %d: %v", w, err)
-		}
-		s.workerWG.Done()
+	err = s.transport.NewRequest(cryptoBody, HashSHA256, w)
+	if err != nil {
+		s.log.Errorf("worker %d: %v", w, err)
 	}
 }
 
 func (s *Sender) Handle() {
-	jobs := make(chan any, s.workers)
-	for w := 1; w <= s.workers; w++ {
-		go s.worker(w, jobs)
-	}
+	jobs := s.wpool.Start(s.processJob)
+	ticker := time.NewTicker(time.Duration(s.cfg.ReportInterval) * time.Second)
+	defer ticker.Stop()
 
 	for {
-		time.Sleep(time.Duration(s.cfg.ReportInterval) * time.Second)
+		select {
+		case <-s.exitChan:
+			close(jobs)
+			return
+		case <-ticker.C:
+			s.stats.UpdateWg.Wait()
+			s.stats.SendWg.Add(1)
+			s.model.GetJobs(s, jobs)
+			s.stats.SendWg.Done()
 
-		s.stats.UpdateWg.Wait()
-		s.stats.SendWg.Add(1)
-		s.model.GetJobs(s, jobs)
-		s.stats.SendWg.Done()
-
-		s.log.Infof("sender run with PollCount: %v", s.stats.PollCount)
+			s.log.Infof("sender run with PollCount: %v", s.stats.PollCount)
+		}
 	}
 }
 
@@ -184,54 +166,6 @@ func (s *Sender) GetHash(row any, outHash chan<- string) {
 		outHash <- v.Hash
 		return
 	}
-}
-
-func (s *Sender) crypto(body *bytes.Buffer) (*bytes.Buffer, error) {
-	if s.publicKey == nil {
-		return body, nil
-	}
-
-	encryptedBytes, err := encryptOAEP(sha256.New(), rand.Reader, s.publicKey, body.Bytes(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("rsa.EncryptOAEP: %v", err)
-	}
-
-	return bytes.NewBuffer([]byte(base64.StdEncoding.EncodeToString(encryptedBytes))), nil
-}
-
-func encryptOAEP(hash hash2.Hash, random io.Reader, public *rsa.PublicKey, msg []byte, label []byte) ([]byte, error) {
-	msgLen := len(msg)
-	step := public.Size() - 2*hash.Size() - 2
-	var encryptedBytes []byte
-
-	for start := 0; start < msgLen; start += step {
-		finish := start + step
-		if finish > msgLen {
-			finish = msgLen
-		}
-
-		encryptedBlockBytes, err := rsa.EncryptOAEP(hash, random, public, msg[start:finish], label)
-		if err != nil {
-			return nil, err
-		}
-
-		encryptedBytes = append(encryptedBytes, encryptedBlockBytes...)
-	}
-
-	return encryptedBytes, nil
-}
-
-func parseRSAPublicKeyFromPEM(pemBytes []byte) (any, error) {
-	block, _ := pem.Decode(pemBytes)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block containing public key")
-	}
-
-	if block.Type != "RSA PUBLIC KEY" {
-		return nil, fmt.Errorf("unsupported PEM block type: %s", block.Type)
-	}
-
-	return x509.ParsePKCS1PublicKey(block.Bytes)
 }
 
 func (s *Sender) compress(body *bytes.Buffer) (*bytes.Buffer, error) {
