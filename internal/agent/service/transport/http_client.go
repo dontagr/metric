@@ -17,9 +17,10 @@ type HTTPManager struct {
 	client *http.Client
 	log    *zap.SugaredLogger
 	url    string
+	ip     string
 }
 
-func NewHTTPManager(cfg *config.Config, log *zap.SugaredLogger) *HTTPManager {
+func NewHTTPManager(cfg *config.Config, log *zap.SugaredLogger) (*HTTPManager, error) {
 	httpManager := HTTPManager{log: log, client: &http.Client{}}
 	if cfg.RateLimit == 0 {
 		httpManager.url = fmt.Sprintf("http://%s/updates/", cfg.HTTPBindAddress)
@@ -27,7 +28,13 @@ func NewHTTPManager(cfg *config.Config, log *zap.SugaredLogger) *HTTPManager {
 		httpManager.url = fmt.Sprintf("http://%s/update/", cfg.HTTPBindAddress)
 	}
 
-	return &httpManager
+	ip, err := getIp()
+	if err != nil {
+		return nil, fmt.Errorf("failed get ip: %v", err)
+	}
+	httpManager.ip = ip
+
+	return &httpManager, nil
 }
 
 func (h *HTTPManager) NewRequest(compressedBody *bytes.Buffer, HashSHA256 []string, w int) error {
@@ -38,6 +45,7 @@ func (h *HTTPManager) NewRequest(compressedBody *bytes.Buffer, HashSHA256 []stri
 
 	req.Header.Set("Content-Encoding", "gzip")
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Real-IP", h.ip)
 	for _, hashRow := range HashSHA256 {
 		req.Header.Add("HashSHA256", hashRow)
 	}
@@ -79,4 +87,21 @@ func (h *HTTPManager) NewRequest(compressedBody *bytes.Buffer, HashSHA256 []stri
 	}
 
 	return nil
+}
+
+func getIp() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", fmt.Errorf("failed in InterfaceAddrs: %v", err)
+	}
+
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+
+	return "127.0.0.1", nil
 }
