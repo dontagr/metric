@@ -28,7 +28,7 @@ func NewHTTPManager(cfg *config.Config, log *zap.SugaredLogger) (*HTTPManager, e
 		httpManager.url = fmt.Sprintf("http://%s/update/", cfg.HTTPBindAddress)
 	}
 
-	ip, err := getIp()
+	ip, err := getIP()
 	if err != nil {
 		return nil, fmt.Errorf("failed get ip: %v", err)
 	}
@@ -89,7 +89,7 @@ func (h *HTTPManager) NewRequest(compressedBody *bytes.Buffer, HashSHA256 []stri
 	return nil
 }
 
-func getIp() (string, error) {
+func getIP() (string, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		return "", fmt.Errorf("failed in InterfaceAddrs: %v", err)
