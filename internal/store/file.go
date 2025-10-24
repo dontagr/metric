@@ -23,7 +23,7 @@ type Filer struct {
 
 func NewFiler(log *zap.SugaredLogger, cfg *config.Config, event *event.Event, lc fx.Lifecycle) *Filer {
 	w := Filer{
-		filename: cfg.Store.FilePath + cfg.Store.FileName,
+		filename: cfg.FilePath + cfg.FileName,
 		perm:     cfg.Store.FilePerm,
 		log:      log,
 	}

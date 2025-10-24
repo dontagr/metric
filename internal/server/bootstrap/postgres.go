@@ -25,7 +25,7 @@ func newPostgresConnect(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecy
 		return nil, nil
 	}
 
-	dbpool, err := pgxpool.New(context.Background(), cfg.DataBase.DatabaseDsn)
+	dbpool, err := pgxpool.New(context.Background(), cfg.DatabaseDsn)
 	if err != nil {
 		log.Errorf("Unable to connect to database: %v", err)
 

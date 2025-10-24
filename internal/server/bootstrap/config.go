@@ -12,20 +12,27 @@ var Config = fx.Options(
 )
 
 func newConfig() (*server.Config, error) {
-	agentConfig := &server.Config{}
+	serverConfig := &server.Config{}
 	flagEnricher := &server.FlagEnricher{}
 	cnf := &config.Config{
-		Data:             agentConfig,
+		Data:             serverConfig,
 		DefaultFilePaths: []string{"../../../configs", "./configs"},
 		DefaultFileNames: []string{"server.json"},
 	}
 
-	cnf.ReadFromFile()
 	if !cnf.IsTestFlag() {
-		err := flagEnricher.Process(agentConfig)
+		err := flagEnricher.Init(serverConfig)
 		if err != nil {
 			return nil, err
 		}
+	}
+	path, name := flagEnricher.GetFilePathAndName([]string{"../../../configs", "./configs"}, []string{"server.json"})
+	cnf.DefaultFilePaths = path
+	cnf.DefaultFileNames = name
+
+	cnf.ReadFromFile()
+	if !cnf.IsTestFlag() {
+		flagEnricher.Process(serverConfig)
 	}
 
 	err := cnf.ReadFromEnv()
@@ -38,5 +45,5 @@ func newConfig() (*server.Config, error) {
 		return nil, err
 	}
 
-	return agentConfig, nil
+	return serverConfig, nil
 }

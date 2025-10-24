@@ -15,17 +15,22 @@ func newConfig() (*agent.Config, error) {
 	agentConfig := &agent.Config{}
 	flagEnricher := &agent.FlagEnricher{}
 	cnf := &config.Config{
-		Data:             agentConfig,
-		DefaultFilePaths: []string{"../../../configs", "./configs"},
-		DefaultFileNames: []string{"agent.json"},
+		Data: agentConfig,
 	}
 
-	cnf.ReadFromFile()
 	if !cnf.IsTestFlag() {
-		err := flagEnricher.Process(agentConfig)
+		err := flagEnricher.Init(agentConfig)
 		if err != nil {
 			return nil, err
 		}
+	}
+	path, name := flagEnricher.GetFilePathAndName([]string{"../../../configs", "./configs"}, []string{"agent.json"})
+	cnf.DefaultFilePaths = path
+	cnf.DefaultFileNames = name
+
+	cnf.ReadFromFile()
+	if !cnf.IsTestFlag() {
+		flagEnricher.Process(agentConfig)
 	}
 
 	err := cnf.ReadFromEnv()

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sync"
 	"time"
 
 	"go.uber.org/fx"
@@ -16,8 +17,10 @@ import (
 	"github.com/dontagr/metric/internal/agent/converter"
 	"github.com/dontagr/metric/internal/agent/service"
 	"github.com/dontagr/metric/internal/agent/service/transport"
+	"github.com/dontagr/metric/internal/agent/worker/pool"
 	"github.com/dontagr/metric/internal/common/hash"
 	"github.com/dontagr/metric/models"
+	crypro "github.com/dontagr/metric/pkg/crypto"
 )
 
 type Sender struct {
@@ -27,14 +30,35 @@ type Sender struct {
 	stats     *service.Stats
 	log       *zap.SugaredLogger
 	workers   int
+	workerWG  *sync.WaitGroup
+	exitChan  chan bool
+	wpool     *pool.WPool
+	cmanager  *crypro.CManager
 }
 
-func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats, lc fx.Lifecycle, transport *transport.HTTPManager) *Sender {
+func NewSender(
+	cfg *config.Config,
+	log *zap.SugaredLogger,
+	stats *service.Stats,
+	cmanager *crypro.CManager,
+	wpool *pool.WPool,
+	lc fx.Lifecycle,
+	transport *transport.HTTPManager,
+) (*Sender, error) {
 	s := &Sender{
 		cfg:       cfg,
 		stats:     stats,
 		log:       log,
 		transport: transport,
+		exitChan:  make(chan bool, 1),
+		workerWG:  wpool.GetWG(),
+		wpool:     wpool,
+		cmanager:  cmanager,
+	}
+
+	err := cmanager.InitPublicKey(cfg.CryptoKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed init public key: %v", err)
 	}
 
 	if s.cfg.RateLimit == 0 {
@@ -53,9 +77,17 @@ func NewSender(cfg *config.Config, log *zap.SugaredLogger, stats *service.Stats,
 
 			return nil
 		},
+		OnStop: func(ctx context.Context) error {
+			s.log.Infof("Получен сигнал для завершения работы. Жду workers.")
+			s.exitChan <- true
+			s.workerWG.Wait()
+			s.log.Infof("Завершение...")
+
+			return nil
+		},
 	})
 
-	return s
+	return s, nil
 }
 
 type (
@@ -64,52 +96,58 @@ type (
 	}
 )
 
-func (s *Sender) worker(w int, jobs chan any) {
-	s.log.Infof("worker %d runing", w)
-	for row := range jobs {
-		body, err := s.getBody(row)
-		if err != nil {
-			s.log.Errorf("worker %d get body: %v", w, err)
-			break
-		}
+func (s *Sender) processJob(w int, row any) {
+	body, err := s.getBody(row)
+	if err != nil {
+		s.log.Errorf("worker %d get body: %v", w, err)
+		return
+	}
 
-		compressedBody, err := s.compress(body)
-		if err != nil {
-			s.log.Errorf("worker %d compress: %v", w, err)
-			continue
-		}
+	compressedBody, err := s.compress(body)
+	if err != nil {
+		s.log.Errorf("worker %d compress: %v", w, err)
+		return
+	}
 
-		HashSHA256 := make([]string, 0, 1)
-		if s.cfg.Security.Key != "" {
-			outHash := make(chan string)
-			s.GetHash(row, outHash)
-			for hashRow := range outHash {
-				HashSHA256 = append(HashSHA256, hashRow)
-			}
-		}
+	cryptoBody, err := s.cmanager.Encrypt(compressedBody)
+	if err != nil {
+		s.log.Errorf("worker %d crypto: %v", w, err)
+		return
+	}
 
-		err = s.transport.NewRequest(compressedBody, HashSHA256, w)
-		if err != nil {
-			s.log.Errorf("worker %d: %v", w, err)
+	HashSHA256 := make([]string, 0, 1)
+	if s.cfg.Security.Key != "" {
+		outHash := make(chan string)
+		s.GetHash(row, outHash)
+		for hashRow := range outHash {
+			HashSHA256 = append(HashSHA256, hashRow)
 		}
+	}
+
+	err = s.transport.NewRequest(cryptoBody, HashSHA256, w)
+	if err != nil {
+		s.log.Errorf("worker %d: %v", w, err)
 	}
 }
 
 func (s *Sender) Handle() {
-	jobs := make(chan any, s.workers)
-	for w := 1; w <= s.workers; w++ {
-		go s.worker(w, jobs)
-	}
+	jobs := s.wpool.Start(s.processJob)
+	ticker := time.NewTicker(time.Duration(s.cfg.ReportInterval) * time.Second)
+	defer ticker.Stop()
 
 	for {
-		time.Sleep(time.Duration(s.cfg.ReportInterval) * time.Second)
+		select {
+		case <-s.exitChan:
+			close(jobs)
+			return
+		case <-ticker.C:
+			s.stats.UpdateWg.Wait()
+			s.stats.SendWg.Add(1)
+			s.model.GetJobs(s, jobs)
+			s.stats.SendWg.Done()
 
-		s.stats.UpdateWg.Wait()
-		s.stats.SendWg.Add(1)
-		s.model.GetJobs(s, jobs)
-		s.stats.SendWg.Done()
-
-		s.log.Infof("sender run with PollCount: %v", s.stats.PollCount)
+			s.log.Infof("sender run with PollCount: %v", s.stats.PollCount)
+		}
 	}
 }
 

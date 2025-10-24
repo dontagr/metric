@@ -1,20 +1,15 @@
 {
-  "HttpServing": {
-    "BindAddress": ":8080"
-  },
+  "address": ":8080",
   "Logging": {
     "LogLevel": "INFO"
   },
-  "Store": {
-    "Interval": 0,
-    "FilePath": "./",
-    "FileName": "bochenok_s_medom",
-    "Restore": true
-  },
-  "DataBase": {
-    "DatabaseDsn": "postgres://postgres:postgres@localhost:5432/metrics"
-  },
+  "store_interval": 0,
+  "store_file": "./",
+  "FileName": "bochenok_s_medom",
+  "restore": true,
+  "database_dsn": "postgres://postgres:postgres@localhost:5432/metrics",
   "Security": {
     "Key": "test"
-  }
+  },
+  "crypto_key": "/Users/sastepo1/.ssh/jwtRS256.key"
 }

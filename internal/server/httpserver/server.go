@@ -2,7 +2,9 @@ package httpserver
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -10,15 +12,18 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/dontagr/metric/internal/server/config"
+	crypro "github.com/dontagr/metric/pkg/crypto"
 )
 
 type HTTPServer struct {
 	Master *echo.Echo
 }
 
-func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shutdowner fx.Shutdowner) *HTTPServer {
+func NewServer(cfg *config.Config, cmanager *crypro.CManager, log *zap.SugaredLogger, lc fx.Lifecycle, shutdowner fx.Shutdowner) (*HTTPServer, error) {
 	mainServer := echo.New()
 
+	workerWG := sync.WaitGroup{}
+	mainServer.Use(middlewareShutdowner(&workerWG))
 	mainServer.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:          true,
 		LogMethod:       true,
@@ -38,14 +43,20 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 			return nil
 		},
 	}))
+
+	err := cmanager.InitPrivateKey(cfg.CryptoKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed init private key: %v", err)
+	}
+	mainServer.Use(middlewareDecrypted(cmanager))
 	mainServer.Use(middleware.Decompress())
 	mainServer.Use(middleware.Gzip())
 
 	lc.Append(fx.Hook{
 		OnStart: func(_ context.Context) error {
-			log.Infof("starting HTTP server. Bind: %s", cfg.HTTPServer.BindAddress)
+			log.Infof("starting HTTP server. Bind: %s", cfg.HTTPServer)
 			go func() {
-				if err := mainServer.Start(cfg.HTTPServer.BindAddress); err != nil && err != http.ErrServerClosed {
+				if err := mainServer.Start(cfg.HTTPServer); err != nil && err != http.ErrServerClosed {
 					log.Errorf("failed to start HTTP Server: %v", err)
 					_ = shutdowner.Shutdown()
 				}
@@ -53,11 +64,15 @@ func NewServer(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle, shut
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
+			log.Infof("Получен сигнал для завершения работы. Жду оканчания отправки.")
+			workerWG.Wait()
+
+			log.Infof("Завершение.")
 			return mainServer.Shutdown(ctx)
 		},
 	})
 
 	return &HTTPServer{
 		Master: mainServer,
-	}
+	}, nil
 }
