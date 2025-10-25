@@ -55,7 +55,7 @@ func (h *HTTPManager) NewRequest(compressedBody *bytes.Buffer, HashSHA256 []stri
 	var netErr *net.OpError
 	var errSend error
 	for i := 0; i < 3; i++ {
-		resp, errSend = h.client.Do(req) //
+		resp, errSend = h.client.Do(req) // no lint
 		if errSend == nil {
 			defer func(Body io.ReadCloser) {
 				err := Body.Close()
