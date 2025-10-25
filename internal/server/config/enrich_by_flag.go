@@ -16,6 +16,7 @@ var storeInterval *int
 var storeRestore *bool
 var configShort *string
 var config *string
+var trustedSubnet *string
 
 type FlagEnricher struct {
 }
@@ -48,6 +49,7 @@ func (f *FlagEnricher) Init(cnf *Config) error {
 	cryptoKey = flagSet.String("crypto-key", "", "crypto-key for public")
 	configShort = flagSet.String("c", "", "configuration file name")
 	config = flagSet.String("config", "", "configuration file name")
+	trustedSubnet = flagSet.String("t", "", "trusted subnet")
 
 	err := flagSet.Parse(os.Args[1:])
 	if err != nil {
@@ -91,5 +93,10 @@ func (f *FlagEnricher) Process(cnf *Config) {
 	_, exists = os.LookupEnv(CryptoKey)
 	if !exists {
 		cnf.CryptoKey = *cryptoKey
+	}
+
+	_, exists = os.LookupEnv(TrustedSubnet)
+	if !exists {
+		cnf.TrustedSubnet = *trustedSubnet
 	}
 }

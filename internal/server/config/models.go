@@ -7,19 +7,21 @@ const DatabaseDsn = "DATABASE_DSN"
 const EnvConfig = "CONFIG"
 const KEY = "KEY"
 const CryptoKey = "CRYPTO_KEY"
+const TrustedSubnet = "TRUSTED_SUBNET"
 
 type Config struct {
-	Log         Logging  `json:"Logging"`
-	HTTPServer  string   `json:"address" env:"ADDRESS" flag:"a" validate:"required"`
-	Security    Security `json:"Security"`
-	DataBase    DataBase `json:"DataBase"`
-	Store       Store    `json:"Store"`
-	Restore     bool     `json:"restore" env:"RESTORE" flag:"r"`
-	FilePath    string   `json:"store_file" env:"FILE_STORAGE_PATH" flag:"f"`
-	FileName    string   `json:"FileName"`
-	Interval    int      `json:"store_interval" env:"STORE_INTERVAL" flag:"i"`
-	CryptoKey   string   `json:"crypto_key" env:"CRYPTO_KEY"`
-	DatabaseDsn string   `json:"database_dsn" env:"DATABASE_DSN" flag:"d"`
+	Log           Logging  `json:"Logging"`
+	HTTPServer    string   `json:"address" env:"ADDRESS" flag:"a" validate:"required"`
+	Security      Security `json:"Security"`
+	DataBase      DataBase `json:"DataBase"`
+	Store         Store    `json:"Store"`
+	TrustedSubnet string   `json:"trusted_subnet" env:"TRUSTED_SUBNET" flag:"t"`
+	Restore       bool     `json:"restore" env:"RESTORE" flag:"r"`
+	FilePath      string   `json:"store_file" env:"FILE_STORAGE_PATH" flag:"f"`
+	FileName      string   `json:"FileName"`
+	Interval      int      `json:"store_interval" env:"STORE_INTERVAL" flag:"i"`
+	CryptoKey     string   `json:"crypto_key" env:"CRYPTO_KEY"`
+	DatabaseDsn   string   `json:"database_dsn" env:"DATABASE_DSN" flag:"d"`
 }
 
 type Security struct {
