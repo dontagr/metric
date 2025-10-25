@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -53,40 +54,36 @@ func (h *HTTPManager) NewRequest(compressedBody *bytes.Buffer, HashSHA256 []stri
 	var resp *http.Response
 	var netErr *net.OpError
 	var errSend error
-	bodyClose := false
 	for i := 0; i < 3; i++ {
 		resp, errSend = h.client.Do(req)
 		if errSend == nil {
-			// just for linter
-			err = resp.Body.Close()
-			if err != nil {
-				return fmt.Errorf("closing response body: %v", err)
+			defer func(Body io.ReadCloser) {
+				err := Body.Close()
+				if err != nil {
+					h.log.Errorf("closing response body: %v", err)
+				}
+			}(resp.Body)
+
+			statusCode := resp.StatusCode
+			if statusCode >= 200 && statusCode < 300 {
+				h.log.Infof("worker %d request sent successfully with status code: %d", w, statusCode)
+				return nil
+			} else {
+				h.log.Warnf("worker %d received non-2xx status code: %d", w, statusCode)
+				return fmt.Errorf("received non-2xx status code: %d", statusCode)
 			}
-			h.log.Infof("worker %d request success full", w)
-			bodyClose = true //nolint
-			return nil
 		}
 		if errors.As(errSend, &netErr) {
 			h.log.Warnf("worker %d connection error we try №%d", w, i+1)
-			time.Sleep(5 * time.Second)
+			if i < 2 {
+				time.Sleep(5 * time.Second)
+			}
 		} else {
 			return fmt.Errorf("sending data: %v", errSend)
 		}
 	}
 
-	if errSend != nil {
-		return fmt.Errorf("sending data: %v", errSend)
-	}
-
-	if !bodyClose {
-		err = resp.Body.Close()
-		if err != nil {
-			return fmt.Errorf("closing response body: %v", err)
-		}
-		h.log.Infof("worker %d request success full", w)
-	}
-
-	return nil
+	return fmt.Errorf("failed to send request after retrying: %v", errSend)
 }
 
 func getIP() (string, error) {
