@@ -38,7 +38,12 @@ func NewHTTPManager(cfg *config.Config, log *zap.SugaredLogger) (*HTTPManager, e
 	return &httpManager, nil
 }
 
-func (h *HTTPManager) NewRequest(compressedBody *bytes.Buffer, HashSHA256 []string, w int) error {
+func (h *HTTPManager) NewRequest(income any, HashSHA256 []string, w int) error {
+	compressedBody, ok := income.(*bytes.Buffer)
+	if !ok {
+		return fmt.Errorf("failed to convert data to *bytes.Buffer")
+	}
+
 	req, err := http.NewRequest("POST", h.url, compressedBody)
 	if err != nil {
 		return fmt.Errorf("creating request: %v", err)

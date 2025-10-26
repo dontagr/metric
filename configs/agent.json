@@ -2,6 +2,7 @@
   "poll_interval": 2,
   "report_interval": 10,
   "address": "localhost:8080",
+  "grpc_address": "localhost:8090",
   "crypto_key": "/Users/sastepo1/.ssh/jwtRS256.key.pem",
   "Logging": {
     "LogLevel": "INFO"

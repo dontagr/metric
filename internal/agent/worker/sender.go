@@ -44,16 +44,22 @@ func NewSender(
 	wpool *pool.WPool,
 	lc fx.Lifecycle,
 	transport *transport.HTTPManager,
+	transportGRPC *transport.GRPCManager,
 ) (*Sender, error) {
 	s := &Sender{
-		cfg:       cfg,
-		stats:     stats,
-		log:       log,
-		transport: transport,
-		exitChan:  make(chan bool, 1),
-		workerWG:  wpool.GetWG(),
-		wpool:     wpool,
-		cmanager:  cmanager,
+		cfg:      cfg,
+		stats:    stats,
+		log:      log,
+		exitChan: make(chan bool, 1),
+		workerWG: wpool.GetWG(),
+		wpool:    wpool,
+		cmanager: cmanager,
+	}
+
+	if cfg.GRPCBindAddress != "" {
+		s.transport = transportGRPC
+	} else {
+		s.transport = transport
 	}
 
 	err := cmanager.InitPublicKey(cfg.CryptoKey)
@@ -97,6 +103,23 @@ type (
 )
 
 func (s *Sender) processJob(w int, row any) {
+	HashSHA256 := make([]string, 0, 1)
+	if s.cfg.Security.Key != "" {
+		outHash := make(chan string)
+		s.GetHash(row, outHash)
+		for hashRow := range outHash {
+			HashSHA256 = append(HashSHA256, hashRow)
+		}
+	}
+
+	if _, ok := s.transport.(*transport.GRPCManager); ok {
+		err := s.transport.NewRequest(row, HashSHA256, w)
+		if err != nil {
+			s.log.Errorf("worker %d: %v", w, err)
+		}
+		return
+	}
+
 	body, err := s.getBody(row)
 	if err != nil {
 		s.log.Errorf("worker %d get body: %v", w, err)
@@ -113,15 +136,6 @@ func (s *Sender) processJob(w int, row any) {
 	if err != nil {
 		s.log.Errorf("worker %d crypto: %v", w, err)
 		return
-	}
-
-	HashSHA256 := make([]string, 0, 1)
-	if s.cfg.Security.Key != "" {
-		outHash := make(chan string)
-		s.GetHash(row, outHash)
-		for hashRow := range outHash {
-			HashSHA256 = append(HashSHA256, hashRow)
-		}
 	}
 
 	err = s.transport.NewRequest(cryptoBody, HashSHA256, w)

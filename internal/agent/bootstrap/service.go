@@ -10,6 +10,7 @@ import (
 var Service = fx.Options(
 	fx.Provide(
 		transport.NewHTTPManager,
+		transport.NewGRPCManager,
 		crypro.NewCManager,
 	),
 )

@@ -97,13 +97,18 @@ func (h *Handler) Update(_ context.Context, in *metrics.UpdateRequest) (*metrics
 func (h *Handler) Updates(_ context.Context, msg *metrics.UpdatesRequest) (*metrics.ValuesResponse, error) {
 	requestArrayMetric := serviceModels.RequestArrayMetric{}
 	for _, row := range msg.Metric {
-		requestArrayMetric = append(requestArrayMetric, serviceModels.RequestMetric{
+		metric := serviceModels.RequestMetric{
 			MType: row.Type,
 			MName: row.Id,
 			Delta: row.Delta,
 			Value: row.Value,
-			Hash:  row.Hash,
-		})
+		}
+
+		if row.Hash != nil && *row.Hash != "" {
+			metric.Hash = row.Hash
+		}
+
+		requestArrayMetric = append(requestArrayMetric, metric)
 	}
 
 	upMetrics, errEcho := h.service.UpdateMetrics(requestArrayMetric)
