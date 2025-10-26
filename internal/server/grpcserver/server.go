@@ -2,7 +2,9 @@ package grpcserver
 
 import (
 	"context"
+	"fmt"
 	"net"
+	"net/netip"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -26,10 +28,20 @@ func NewGrpcServer(cfg *config.Config, handler *grpc2.Handler, log *zap.SugaredL
 		return &GrpcServer{}, nil
 	}
 
+	var network netip.Prefix
+	var err error
+	if cfg.TrustedSubnet != "" {
+		network, err = netip.ParsePrefix(cfg.TrustedSubnet)
+		if err != nil {
+			return nil, fmt.Errorf("we have are problem hear: %v", err)
+		}
+	}
+
 	logInterceptor := LogMetaDataInterceptor{log: log}
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			logInterceptor.Unary,
+			metadataIPCheckInterceptor(network),
 			recovery.UnaryServerInterceptor(),
 		),
 		grpc.ChainStreamInterceptor(

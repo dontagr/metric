@@ -20,9 +20,17 @@ type GRPCManager struct {
 }
 
 func NewGRPCManager(cfg *config.Config, log *zap.SugaredLogger, lc fx.Lifecycle) (*GRPCManager, error) {
+	ip, err := getIP()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get IP: %v", err)
+	}
+
 	conn, err := grpc.NewClient(
 		cfg.GRPCBindAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(
+			ipInterceptor(ip),
+		),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("new GRPC Client: %v", err)
@@ -51,16 +59,14 @@ func (h *GRPCManager) NewRequest(income any, _ []string, w int) error {
 			})
 		}
 
-		val, err := h.client.Updates(context.Background(), &metrics.UpdatesRequest{Metric: collection})
+		_, err := h.client.Updates(context.Background(), &metrics.UpdatesRequest{Metric: collection})
 		if err != nil {
 			return err
 		}
 
-		h.log.Infof("%v", val)
-
 		return nil
 	case *models.Metrics:
-		val, err := h.client.Update(context.Background(), &metrics.UpdateRequest{
+		_, err := h.client.Update(context.Background(), &metrics.UpdateRequest{
 			Id:    v.ID,
 			Type:  v.MType,
 			Delta: v.Delta,
@@ -70,8 +76,6 @@ func (h *GRPCManager) NewRequest(income any, _ []string, w int) error {
 		if err != nil {
 			return err
 		}
-
-		h.log.Infof("%v", val)
 
 		return nil
 	default:
