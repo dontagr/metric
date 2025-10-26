@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"time"
@@ -62,21 +61,17 @@ func (h *HTTPManager) NewRequest(income any, HashSHA256 []string, w int) error {
 	for i := 0; i < 3; i++ {
 		resp, errSend = h.client.Do(req) // nolint
 		if errSend == nil {
-			defer func(Body io.ReadCloser) {
-				err := Body.Close()
-				if err != nil {
-					h.log.Errorf("closing response body: %v", err)
-				}
-			}(resp.Body)
-
 			statusCode := resp.StatusCode
 			if statusCode >= 200 && statusCode < 300 {
 				h.log.Infof("worker %d request sent successfully with status code: %d", w, statusCode)
 				return nil
 			} else {
 				h.log.Warnf("worker %d received non-2xx status code: %d", w, statusCode)
-				return fmt.Errorf("received non-2xx status code: %d", statusCode)
+				errSend = fmt.Errorf("received non-2xx status code: %d", statusCode)
 			}
+
+			resp.Body.Close()
+			return errSend
 		}
 		if errors.As(errSend, &netErr) {
 			h.log.Warnf("worker %d connection error we try №%d", w, i+1)
