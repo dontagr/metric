@@ -2,7 +2,6 @@ package grpcserver
 
 import (
 	"context"
-	"fmt"
 	"net/netip"
 
 	"google.golang.org/grpc"
@@ -34,7 +33,7 @@ func metadataIPCheckInterceptor(trustNetwork netip.Prefix) grpc.UnaryServerInter
 		}
 
 		if !trustNetwork.Contains(ip) {
-			return nil, status.Errorf(codes.PermissionDenied, fmt.Sprintf("go out busters. you ip %s out of range", xRealIP))
+			return nil, status.Errorf(codes.PermissionDenied, "go out busters. you ip %s out of range", xRealIP)
 		}
 
 		return handler(ctx, req)
