@@ -12,6 +12,7 @@ const TrustedSubnet = "TRUSTED_SUBNET"
 type Config struct {
 	Log           Logging  `json:"Logging"`
 	HTTPServer    string   `json:"address" env:"ADDRESS" flag:"a" validate:"required"`
+	GRPCServer    string   `json:"address_grpc" env:"ADDRESS_GRPC"`
 	Security      Security `json:"Security"`
 	DataBase      DataBase `json:"DataBase"`
 	Store         Store    `json:"Store"`

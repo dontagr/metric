@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+option go_package = "./service;metrics";
+
+package metric;
+
+import "google/protobuf/empty.proto";
+
+service MetricService {
+  rpc Value(ValueRequest) returns (ValueResponse);
+  rpc Values(google.protobuf.Empty) returns (ValuesResponse);
+  rpc Update(UpdateRequest) returns (ValueResponse);
+  rpc Updates(UpdatesRequest) returns (ValuesResponse);
+  rpc Ping(PingRequest) returns (PingResponse);
+}
+
+message UpdatesRequest {
+  repeated UpdateRequest metric = 1;
+}
+
+message ValuesResponse {
+  repeated ValueResponse metric = 1;
+}
+
+message UpdateRequest {
+  string id = 1;
+  string type = 2;
+  optional int64 delta = 3;
+  optional double value = 4;
+  optional string hash = 5;
+}
+
+message ValueRequest {
+  string id = 1;
+  string type = 2;
+}
+
+message ValueResponse {
+  string id = 1;
+  string type = 2;
+  optional int64 delta = 3;
+  optional double value = 4;
+  string hash = 5;
+}
+
+message PingRequest {
+  string message = 1;
+}
+
+message PingResponse {
+  string message = 1;
+}

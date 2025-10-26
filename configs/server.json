@@ -1,5 +1,6 @@
 {
   "address": ":8080",
+  "address_grpc": ":8090",
   "Logging": {
     "LogLevel": "INFO"
   },

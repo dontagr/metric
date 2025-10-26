@@ -3,8 +3,6 @@ package interfaces
 import (
 	"context"
 
-	"github.com/labstack/echo/v4"
-
 	serviceModels "github.com/dontagr/metric/internal/server/service/models"
 	"github.com/dontagr/metric/models"
 )
@@ -27,11 +25,12 @@ type (
 		ReturnValue(metrics *models.Metrics) string
 	}
 	Service interface {
-		GetMetric(requestMetric serviceModels.RequestMetric) (*models.Metrics, *echo.HTTPError)
-		GetStringValue(metrics *models.Metrics) (string, *echo.HTTPError)
-		GetAllMetricHTML() (string, *echo.HTTPError)
-		UpdateMetrics(requestArrayMetric serviceModels.RequestArrayMetric) (map[string]*models.Metrics, *echo.HTTPError)
-		UpdateMetric(requestMetric serviceModels.RequestMetric) (*models.Metrics, *echo.HTTPError)
+		GetMetric(requestMetric serviceModels.RequestMetric) (*models.Metrics, *models.InternalError)
+		GetStringValue(metrics *models.Metrics) (string, *models.InternalError)
+		GetAllMetricHTML() (string, *models.InternalError)
+		GetAllMetrics() (map[string]*models.Metrics, *models.InternalError)
+		UpdateMetrics(requestArrayMetric serviceModels.RequestArrayMetric) (map[string]*models.Metrics, *models.InternalError)
+		UpdateMetric(requestMetric serviceModels.RequestMetric) (*models.Metrics, *models.InternalError)
 		Ping(ctx context.Context) error
 	}
 	IStoreFactory interface {
