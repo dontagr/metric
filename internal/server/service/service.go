@@ -26,12 +26,12 @@ type Service struct {
 
 func (s *Service) GetMetric(requestMetric serviceModels.RequestMetric) (*models.Metrics, *models.InternalError) {
 	if !validator.IsValidMType(requestMetric.MType) {
-		return nil, &models.InternalError{Code: http.StatusBadRequest, Message: "Invalid type"}
+		return nil, &models.InternalError{Code: http.StatusBadRequest, Message: "invalid type"}
 	}
 
 	oldMetric, err := s.Store.LoadMetric(requestMetric.MName, requestMetric.MType)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, &models.InternalError{Code: http.StatusNotFound, Message: fmt.Sprintf("Not found %s %s", requestMetric.MName, requestMetric.MType)}
+		return nil, &models.InternalError{Code: http.StatusNotFound, Message: fmt.Sprintf("not found %s %s", requestMetric.MName, requestMetric.MType)}
 	} else if err != nil {
 		return nil, &models.InternalError{Code: http.StatusInternalServerError, Message: fmt.Sprintf("загрузка не удалась для (id: %s, mtype: %s): %v", requestMetric.MName, requestMetric.MType, err)}
 	}
@@ -128,7 +128,7 @@ func (s *Service) UpdateMetric(requestMetric serviceModels.RequestMetric) (*mode
 
 func (s *Service) processUpdateData(requestData *serviceModels.RequestMetric, oldMetric *models.Metrics) (*models.Metrics, *models.InternalError) {
 	if !validator.IsValidMType(requestData.MType) {
-		return nil, &models.InternalError{Code: http.StatusBadRequest, Message: "Invalid type"}
+		return nil, &models.InternalError{Code: http.StatusBadRequest, Message: "invalid type"}
 	}
 
 	metricProcessor, err := s.MetricFactory.GetMetric(requestData.MType)
@@ -156,7 +156,7 @@ func (s *Service) processUpdateData(requestData *serviceModels.RequestMetric, ol
 		hashManager.SetKey(s.HashKey)
 		hashManager.SetMetrics(newMetric)
 		if requestData.Hash != nil && hashManager.GetHash() != *requestData.Hash {
-			return nil, &models.InternalError{Code: http.StatusBadRequest, Message: "Хеш не совпадает"}
+			return nil, &models.InternalError{Code: http.StatusBadRequest, Message: "хеш не совпадает"}
 		}
 	}
 

@@ -40,7 +40,7 @@ func (h *Handler) Value(ctx context.Context, in *metrics.ValueRequest) (*metrics
 
 	md := metadata.New(map[string]string{models.HashAlgKey: oldMetric.Hash})
 	if err := grpc.SendHeader(ctx, md); err != nil {
-		h.log.Errorf("Failed to send header: %v", err)
+		h.log.Errorf("failed to send header: %v", err)
 		return nil, status.Errorf(codes.Internal, "failed to send metadata")
 	}
 
