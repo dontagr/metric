@@ -60,7 +60,7 @@ func (h *HTTPManager) NewRequest(income any, HashSHA256 []string, w int) error {
 	var netErr *net.OpError
 	var errSend error
 	for i := 0; i < 3; i++ {
-		resp, errSend = h.client.Do(req) // no lint
+		resp, errSend = h.client.Do(req) // nolint
 		if errSend == nil {
 			defer func(Body io.ReadCloser) {
 				err := Body.Close()

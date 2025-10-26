@@ -35,7 +35,7 @@ func (h *Handler) Value(ctx context.Context, in *metrics.ValueRequest) (*metrics
 		MName: in.Id,
 	})
 	if errEcho != nil {
-		return nil, status.Errorf(errorCodeTransfer(errEcho.Code), errEcho.Message)
+		return nil, status.Errorf(errorCodeTransfer(errEcho.Code), "%s", errEcho.Message)
 	}
 
 	md := metadata.New(map[string]string{models.HashAlgKey: oldMetric.Hash})
@@ -56,7 +56,7 @@ func (h *Handler) Value(ctx context.Context, in *metrics.ValueRequest) (*metrics
 func (h *Handler) Values(_ context.Context, _ *emptypb.Empty) (*metrics.ValuesResponse, error) {
 	collection, errEcho := h.service.GetAllMetrics()
 	if errEcho != nil {
-		return nil, status.Errorf(errorCodeTransfer(errEcho.Code), errEcho.Message)
+		return nil, status.Errorf(errorCodeTransfer(errEcho.Code), "%s", errEcho.Message)
 	}
 
 	result := metrics.ValuesResponse{}
@@ -82,7 +82,7 @@ func (h *Handler) Update(_ context.Context, in *metrics.UpdateRequest) (*metrics
 		Hash:  in.Hash,
 	})
 	if errEcho != nil {
-		return nil, status.Errorf(errorCodeTransfer(errEcho.Code), errEcho.Message)
+		return nil, status.Errorf(errorCodeTransfer(errEcho.Code), "%s", errEcho.Message)
 	}
 
 	return &metrics.ValueResponse{
@@ -113,7 +113,7 @@ func (h *Handler) Updates(_ context.Context, msg *metrics.UpdatesRequest) (*metr
 
 	upMetrics, errEcho := h.service.UpdateMetrics(requestArrayMetric)
 	if errEcho != nil {
-		return nil, status.Errorf(errorCodeTransfer(errEcho.Code), errEcho.Message)
+		return nil, status.Errorf(errorCodeTransfer(errEcho.Code), "%s", errEcho.Message)
 	}
 
 	result := metrics.ValuesResponse{}
