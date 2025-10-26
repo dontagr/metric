@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/netip"
 	"sync"
 
 	"github.com/labstack/echo/v4"
@@ -44,6 +45,15 @@ func NewServer(cfg *config.Config, cmanager *crypro.CManager, log *zap.SugaredLo
 		},
 	}))
 
+	if cfg.TrustedSubnet != "" {
+		network, err := netip.ParsePrefix(cfg.TrustedSubnet)
+		if err != nil {
+			panic(err)
+		}
+
+		mainServer.Use(middlewareIPDefender(network))
+	}
+
 	err := cmanager.InitPrivateKey(cfg.CryptoKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed init private key: %v", err)
@@ -71,6 +81,8 @@ func NewServer(cfg *config.Config, cmanager *crypro.CManager, log *zap.SugaredLo
 			return mainServer.Shutdown(ctx)
 		},
 	})
+
+	log.Infof("Строковое представление бесклассовой адресации (CIDR) = '%v'", cfg.TrustedSubnet)
 
 	return &HTTPServer{
 		Master: mainServer,

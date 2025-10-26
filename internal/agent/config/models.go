@@ -3,6 +3,7 @@ package config
 type Config struct {
 	Log             Logging  `json:"Logging"`
 	HTTPBindAddress string   `json:"address" env:"ADDRESS" validate:"required"`
+	GRPCBindAddress string   `json:"grpc_address" env:"GRPC_ADDRESS"`
 	Security        Security `json:"Security"`
 	PollInterval    int      `json:"poll_interval" env:"POLL_INTERVAL" validate:"required"`
 	ReportInterval  int      `json:"report_interval" env:"REPORT_INTERVAL" validate:"required"`

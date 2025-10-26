@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"sync"
 
 	"github.com/labstack/echo/v4"
@@ -42,6 +43,28 @@ func middlewareDecrypted(cmanager *crypro.CManager) echo.MiddlewareFunc {
 			}
 
 			c.Request().Body = io.NopCloser(bytes.NewReader(encryptedBytes))
+
+			return next(c)
+		}
+	}
+}
+
+func middlewareIPDefender(trustNetwork netip.Prefix) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			xRealIP := c.Request().Header.Get(echo.HeaderXRealIP)
+			if xRealIP == "" {
+				return echo.NewHTTPError(http.StatusForbidden, fmt.Sprintf("header %s is required", echo.HeaderXRealIP))
+			}
+
+			ip, err := netip.ParseAddr(xRealIP)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusForbidden, fmt.Sprintf("header %s is failed", echo.HeaderXRealIP))
+			}
+
+			if !trustNetwork.Contains(ip) {
+				return echo.NewHTTPError(http.StatusForbidden, fmt.Sprintf("go out busters. you ip %s ", xRealIP))
+			}
 
 			return next(c)
 		}

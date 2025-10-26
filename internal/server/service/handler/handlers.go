@@ -29,7 +29,7 @@ func (h *Handler) GetMetric(c echo.Context) error {
 
 	oldMetric, errEcho := h.Service.GetMetric(requestMetric)
 	if errEcho != nil {
-		return errEcho
+		return &echo.HTTPError{Code: errEcho.Code, Message: errEcho.Message}
 	}
 
 	contentType := c.Request().Header.Get(echo.HeaderContentType)
@@ -43,7 +43,7 @@ func (h *Handler) GetMetric(c echo.Context) error {
 
 	value, errEcho := h.Service.GetStringValue(oldMetric)
 	if errEcho != nil {
-		return errEcho
+		return &echo.HTTPError{Code: errEcho.Code, Message: errEcho.Message}
 	}
 	if h.HashKey != "" {
 		hashManager := hash.NewHashManager()
@@ -60,7 +60,7 @@ func (h *Handler) GetMetric(c echo.Context) error {
 func (h *Handler) GetAllMetric(c echo.Context) error {
 	html, errEcho := h.Service.GetAllMetricHTML()
 	if errEcho != nil {
-		return errEcho
+		return &echo.HTTPError{Code: errEcho.Code, Message: errEcho.Message}
 	}
 
 	return c.HTML(http.StatusOK, html)
@@ -76,7 +76,7 @@ func (h *Handler) UpdatesMetric(c echo.Context) error {
 
 	metrics, errEcho := h.Service.UpdateMetrics(requestArrayMetric)
 	if errEcho != nil {
-		return errEcho
+		return &echo.HTTPError{Code: errEcho.Code, Message: errEcho.Message}
 	}
 
 	return c.JSON(http.StatusOK, metrics)
@@ -92,7 +92,7 @@ func (h *Handler) UpdateMetric(c echo.Context) error {
 
 	metric, errEcho := h.Service.UpdateMetric(requestMetric)
 	if errEcho != nil {
-		return errEcho
+		return &echo.HTTPError{Code: errEcho.Code, Message: errEcho.Message}
 	}
 
 	contentType := c.Request().Header.Get(echo.HeaderContentType)

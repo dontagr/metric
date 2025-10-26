@@ -20,13 +20,13 @@ func main() {
 
 func CreateApp() fx.Option {
 	return fx.Options(
+		bootstrap.Logger,
 		bootstrap.Postgres,
 		bootstrap.Store,
 		bootstrap.Config,
 		bootstrap.Server,
 		bootstrap.Route,
 		bootstrap.Service,
-		bootstrap.Logger,
 		bootstrap.Filer,
 	)
 }

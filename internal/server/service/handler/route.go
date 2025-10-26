@@ -9,11 +9,11 @@ func BindRoutes(server *httpserver.HTTPServer, h *Handler) {
 	server.Master.POST("/update/:mType/:mName/:mValue/*", h.BadRequest)
 	server.Master.GET("/value/:mType/:mName", h.GetMetric)
 	server.Master.GET("/value/:mType/:mName/*", h.BadRequest)
-	server.Master.GET("/", h.GetAllMetric)
-	server.Master.POST("/update/", h.UpdateMetric)
-	server.Master.POST("/value/", h.GetMetric)
-	server.Master.GET("/ping", h.Ping)
-	server.Master.POST("/updates/", h.UpdatesMetric)
+	server.Master.GET("/", h.GetAllMetric)           // + grpc
+	server.Master.POST("/update/", h.UpdateMetric)   // + grpc
+	server.Master.POST("/value/", h.GetMetric)       // + grpc
+	server.Master.GET("/ping", h.Ping)               // + grpc
+	server.Master.POST("/updates/", h.UpdatesMetric) // + grpc
 
 	server.Master.GET("/debug/pprof/", h.Pprof)
 	server.Master.GET("/debug/pprof/heap", h.PprofHeap)
